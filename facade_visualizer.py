@@ -16,12 +16,12 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
         n_images = rows * cols
         xp = enc.xp
         
-        w_in = 256
-        w_out = 256
-        in_ch = 12
-        out_ch = 3
+        w_in = 128
+        w_out = 128
+        in_ch = 4
+        out_ch = 4
         
-        in_all = np.zeros((n_images, in_ch, w_in, w_in)).astype("i")
+        in_all = np.zeros((n_images, in_ch, w_in, w_in)).astype("f")
         gt_all = np.zeros((n_images, out_ch, w_out, w_out)).astype("f")
         gen_all = np.zeros((n_images, out_ch, w_out, w_out)).astype("f")
         
@@ -40,9 +40,9 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
             z = enc(x_in)
             x_out = dec(z)
             
-            in_all[it,:] = x_in.data.get()[0,:]
-            gt_all[it,:] = t_out.get()[0,:]
-            gen_all[it,:] = x_out.data.get()[0,:]
+            in_all[it,:] = x_in.data[0,:]
+            gt_all[it,:] = t_out[0,:]
+            gen_all[it,:] = x_out.data[0,:]
         
         
         def save_image(x, name, mode=None):
@@ -59,16 +59,13 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
                 '/image_{}_{:0>8}.png'.format(name, trainer.updater.iteration)
             if not os.path.exists(preview_dir):
                 os.makedirs(preview_dir)
-            Image.fromarray(x, mode=mode).convert('RGB').save(preview_path)
+            Image.fromarray(x, mode=mode).convert('RGBA').save(preview_path)
         
         x = np.asarray(np.clip(gen_all * 128 + 128, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gen")
         
-        x = np.ones((n_images, 3, w_in, w_in)).astype(np.uint8)*255
-        x[:,0,:,:] = 0
-        for i in range(12):
-            x[:,0,:,:] += np.uint8(15*i*in_all[:,i,:,:])
-        save_image(x, "in", mode='HSV')
+        x = np.asarray(np.clip(in_all * 128 + 128, 0.0, 255.0), dtype=np.uint8)
+        save_image(x, "in")
         
         x = np.asarray(np.clip(gt_all * 128+128, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gt")

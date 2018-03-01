@@ -1,3 +1,6 @@
-cupy
-chainer
-scikit-image
+chainer==3.4.0
+filelock==3.0.4
+numpy==1.13.3
+Pillow==5.0.0
+protobuf==3.5.1
+six==1.11.0
