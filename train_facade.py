@@ -16,7 +16,7 @@ from net import Encoder
 from net import Decoder
 from updater import FacadeUpdater
 
-from facade_dataset import FacadeDataset
+from facade_dataset import FacadeDataset, HiResoDataset
 from facade_visualizer import out_image
 
 def main():
@@ -69,14 +69,20 @@ def main():
     opt_dec = make_optimizer(dec)
     opt_dis = make_optimizer(dis)
 
-    train_d = FacadeDataset(
-        "{}/main/back".format(args.dataset),
+    train_d = HiResoDataset(
         "{}/main/front".format(args.dataset),
     )
-    test_d = FacadeDataset(
-        "{}/test/back".format(args.dataset),
+    test_d = HiResoDataset(
         "{}/test/front".format(args.dataset),        
     )
+    # train_d = FacadeDataset(
+    #     "{}/main/back".format(args.dataset),
+    #     "{}/main/front".format(args.dataset),
+    # )
+    # test_d = FacadeDataset(
+    #     "{}/test/back".format(args.dataset),
+    #     "{}/test/front".format(args.dataset),        
+    # )
     #train_iter = chainer.iterators.MultiprocessIterator(train_d, args.batchsize, n_processes=4)
     #test_iter = chainer.iterators.MultiprocessIterator(test_d, args.batchsize, n_processes=4)
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
