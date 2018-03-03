@@ -70,12 +70,12 @@ def main():
     opt_dis = make_optimizer(dis)
 
     train_d = FacadeDataset(
-        f"{args.dataset}/main/back",
-        f"{args.dataset}/main/front",
+        "{}/main/back".format(args.dataset),
+        "{}/main/front".format(args.dataset),
     )
     test_d = FacadeDataset(
-        f"{args.dataset}/test/back",
-        f"{args.dataset}/test/front",        
+        "{}/test/back".format(args.dataset),
+        "{}/test/front".format(args.dataset),        
     )
     #train_iter = chainer.iterators.MultiprocessIterator(train_d, args.batchsize, n_processes=4)
     #test_iter = chainer.iterators.MultiprocessIterator(test_d, args.batchsize, n_processes=4)
