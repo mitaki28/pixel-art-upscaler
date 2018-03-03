@@ -36,9 +36,9 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
                 x_in[i,:] = xp.asarray(batch[i][0])
                 t_out[i,:] = xp.asarray(batch[i][1])
             x_in = Variable(x_in)
-
-            z = enc(x_in)
-            x_out = dec(z)
+            with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+                z = enc(x_in)
+                x_out = dec(z)
             
             in_all[it,:] = x_in.data[0,:]
             gt_all[it,:] = t_out[0,:]
@@ -71,3 +71,26 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
         save_image(x, "gt")
         
     return make_image
+
+def convert_image(img, enc, dec):
+        xp = enc.xp
+        
+        oh, ow = img.size
+
+        img = (np.asarray(img.resize((128, 128))).astype("f").transpose((2, 0, 1)) - 128) / 128
+        x_in = Variable(img.reshape((1, ) + img.shape))
+        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+            z = enc(x_in)
+            x_out = dec(z)    
+        x = x_out.data
+
+        _, C, H, W = x.shape
+        x = x.transpose(0, 2, 3, 1)
+        if C==1:
+            x = x.reshape((H, W))
+        else:
+            x = x.reshape((H, W, C))
+        
+        return Image.fromarray(
+            np.asarray(xp.clip(x * 128 + 128, 0.0, 255.0), dtype=np.uint8)
+        ).resize((oh, ow))
