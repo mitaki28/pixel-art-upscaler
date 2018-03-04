@@ -72,25 +72,39 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
         
     return make_image
 
-def convert_image(img, enc, dec):
+def convert_image(imgs, enc, dec):
         xp = enc.xp
         
-        oh, ow = img.size
+        batchsize = 4
+        w_in = 128
+        w_out, h_out = imgs[0].size
+        assert w_out == h_out
 
-        img = (np.asarray(img.resize((128, 128))).astype("f").transpose((2, 0, 1)) - 128) / 128
-        x_in = Variable(img.reshape((1, ) + img.shape))
-        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-            z = enc(x_in)
-            x_out = dec(z)    
-        x = x_out.data
+        imgs = np.asarray([
+            (np.asarray(img.resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 128) / 128
+            for img
+            in imgs
+        ])
 
-        _, C, H, W = x.shape
-        x = x.transpose(0, 2, 3, 1)
-        if C==1:
-            x = x.reshape((H, W))
-        else:
-            x = x.reshape((H, W, C))
-        
-        return Image.fromarray(
-            np.asarray(xp.clip(x * 128 + 128, 0.0, 255.0), dtype=np.uint8)
-        ).resize((oh, ow))
+        xs = []
+        for i in range((len(imgs) - 1) // batchsize + 1):
+            imgs_chunk = imgs[i*batchsize:(i+1)*batchsize]                
+            x_in = Variable(imgs_chunk)
+            with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+                z = enc(x_in)
+                x_out = dec(z)
+            xs.extend(x_out.data)
+            print((i + 1) * batchsize, 'images done')
+
+        ret = []
+        for x in xs:
+            C, H, W = x.shape
+            x = x.transpose(1, 2, 0)
+            if C==1:
+                x = x.reshape((H, W))
+            else:
+                x = x.reshape((H, W, C))
+            ret.append(Image.fromarray(
+                np.asarray(xp.clip(x * 128 + 128, 0.0, 255.0), dtype=np.uint8)
+            ).resize((w_out, w_out), Image.NEAREST))
+        return ret

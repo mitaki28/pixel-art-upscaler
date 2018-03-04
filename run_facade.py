@@ -6,6 +6,7 @@ from __future__ import print_function
 import argparse
 import os
 from PIL import Image
+from pathlib import Path
 
 import chainer
 from chainer import training
@@ -22,9 +23,9 @@ from facade_visualizer import convert_image
 
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
-    parser.add_argument('--gpu', '-g', type=int, default=-1,
-                        help='GPU ID (negative value indicates CPU)')
-    parser.add_argument('--input', help='path to input image')
+    parser.add_argument('images', help='path to input images', metavar='image', type=str, nargs='+',)
+    parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU ID (negative value indicates CPU)')
+    parser.add_argument('--out', '-o', type=str, default='out/converted', help='path to output directory')
     parser.add_argument('--encoder', help='path to encoder model')
     parser.add_argument('--decoder', help='path to decoder model')
     args = parser.parse_args()
@@ -44,8 +45,17 @@ def main():
 
     chainer.serializers.load_npz(args.encoder, enc)
     chainer.serializers.load_npz(args.decoder, dec)
-    with Image.open(args.input) as f:
-        convert_image(f, enc, dec).save('tmp.png')
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+
+    image_paths = [Path(image_path_str) for image_path_str in args.images]
+    imgs = [Image.open(str(image_path)) for image_path in image_paths]
+
+    converted_imgs = convert_image(imgs, enc, dec)
+    for image_path, img in zip(image_paths, converted_imgs):
+        img.convert('RGBA').save(out/image_path.name)
+        
 
 if __name__ == '__main__':
     main()
