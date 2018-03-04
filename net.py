@@ -102,3 +102,23 @@ class Discriminator(chainer.Chain):
         h = self.c4(h)
         #h = F.average_pooling_2d(h, h.data.shape[2], 1, 0)
         return h
+
+class Discriminator2(chainer.Chain):
+    def __init__(self, out_ch):
+        layers = {}
+        w = chainer.initializers.Normal(0.02)
+        layers['c0'] = CBR(out_ch, 64, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c1'] = CBR(64, 128, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c2'] = CBR(128, 256, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c3'] = CBR(256, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c4'] = L.Convolution2D(512, 1, 3, 1, 1, initialW=w)
+        super().__init__(**layers)
+
+    def __call__(self, x_0):
+        h = self.c0(x_0)
+        h = self.c1(h)
+        h = self.c2(h)
+        h = self.c3(h)
+        h = self.c4(h)
+        #h = F.average_pooling_2d(h, h.data.shape[2], 1, 0)
+        return h

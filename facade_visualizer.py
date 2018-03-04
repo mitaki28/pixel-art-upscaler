@@ -9,12 +9,11 @@ import chainer
 import chainer.cuda
 from chainer import Variable
 
-def out_image(updater, enc, dec, rows, cols, seed, dst):
+def out_image_base(updater, xp, rows, cols, seed, dst, converter):
     @chainer.training.make_extension()
     def make_image(trainer):
         np.random.seed(seed)
         n_images = rows * cols
-        xp = enc.xp
         
         w_in = 128
         w_out = 128
@@ -35,10 +34,9 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
             for i in range(batchsize):
                 x_in[i,:] = xp.asarray(batch[i][0])
                 t_out[i,:] = xp.asarray(batch[i][1])
+
             x_in = Variable(x_in)
-            with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-                z = enc(x_in)
-                x_out = dec(z)
+            x_out = converter(x_in)
             
             in_all[it,:] = x_in.data[0,:]
             gt_all[it,:] = t_out[0,:]
@@ -72,9 +70,19 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
         
     return make_image
 
-def convert_image(imgs, enc, dec):
-        xp = enc.xp
-        
+def out_image(updater, enc, dec, rows, cols, seed, dst):
+    def converter(x_in):
+        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+            return dec(enc(x_in))
+    return out_image_base(updater, enc.xp, rows, cols, seed, dst, converter)
+
+def out_image2(updater, enc0, dec0, enc, dec, rows, cols, seed, dst):
+    def converter(x_in):
+        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+            return dec(enc(dec0(enc0(x_in))))
+    return out_image_base(updater, enc.xp, rows, cols, seed, dst, converter)
+
+def convert_image_base(imgs, xp, converter):
         batchsize = 4
         w_in = 128
         w_out, h_out = imgs[0].size
@@ -88,11 +96,9 @@ def convert_image(imgs, enc, dec):
 
         xs = []
         for i in range((len(imgs) - 1) // batchsize + 1):
-            imgs_chunk = imgs[i*batchsize:(i+1)*batchsize]                
-            x_in = Variable(imgs_chunk)
-            with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-                z = enc(x_in)
-                x_out = dec(z)
+            imgs_chunk = imgs[i*batchsize:(i+1)*batchsize]
+            x_in = Variable(img_chunk)
+            x_out = converter(x_in)
             xs.extend(x_out.data)
             print((i + 1) * batchsize, 'images done')
 
@@ -108,3 +114,17 @@ def convert_image(imgs, enc, dec):
                 np.asarray(xp.clip(x * 128 + 128, 0.0, 255.0), dtype=np.uint8)
             ).resize((w_out, w_out), Image.NEAREST))
         return ret
+
+
+def convert_image(imgs, enc, dec):
+    def converter(x_in):
+        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+            return dec(enc(x_in))
+    return convert_image_base(imgs, enc.xp, converter)
+
+
+def convert_image2(imgs, enc0, dec0, enc, dec):
+    def converter(x_in):
+        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+            return dec(enc(dec0(enc0(x_in))))
+    return convert_image_base(imgs, enc.xp, converter)
