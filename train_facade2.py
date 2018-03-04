@@ -11,7 +11,7 @@ from chainer import training
 from chainer.training import extensions
 from chainer import serializers
 
-from net import Discriminator2
+from net import Discriminator
 from net import Encoder
 from net import Decoder
 from updater import FacadeUpdater2
@@ -43,6 +43,8 @@ def main():
                         help='Interval of previewing generated image')
     parser.add_argument('--encoder0', help='path to encoder base model')
     parser.add_argument('--decoder0', help='path to decoder base model')
+    parser.add_argument('--discriminator0', help='path to discriminator base model')
+
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -53,12 +55,13 @@ def main():
     # Set up a neural network to train
     enc0 = Encoder(in_ch=4)
     dec0 = Decoder(out_ch=4)
+    dis = Discriminator(in_ch=4, out_ch=4)
     chainer.serializers.load_npz(args.encoder0, enc0)
     chainer.serializers.load_npz(args.decoder0, dec0)
+    chainer.serializers.load_npz(args.discriminator0, dis)
 
     enc = Encoder(in_ch=4)
     dec = Decoder(out_ch=4)
-    dis = Discriminator2(out_ch=4)
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
