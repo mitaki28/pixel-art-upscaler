@@ -97,7 +97,7 @@ def convert_image_base(imgs, xp, converter):
         xs = []
         for i in range((len(imgs) - 1) // batchsize + 1):
             imgs_chunk = imgs[i*batchsize:(i+1)*batchsize]
-            x_in = Variable(img_chunk)
+            x_in = Variable(imgs_chunk)
             x_out = converter(x_in)
             xs.extend(x_out.data)
             print((i + 1) * batchsize, 'images done')
