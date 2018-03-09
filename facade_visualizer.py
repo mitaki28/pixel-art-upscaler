@@ -85,11 +85,11 @@ def out_image2(updater, enc0, dec0, enc, dec, rows, cols, seed, dst):
 def convert_image_base(imgs, xp, converter):
         batchsize = 4
         w_in = 128
-        w_out, h_out = imgs[0].size
-        assert w_out == h_out
-
+        w_out = 64
+        #w_out, h_out = imgs[0].size
+        #assert w_out == h_out
         imgs = np.asarray([
-            (np.asarray(img.resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 128) / 128
+            (np.asarray(img.convert('RGBA').resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 128) / 128
             for img
             in imgs
         ])
