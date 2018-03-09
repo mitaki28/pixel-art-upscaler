@@ -27,7 +27,7 @@ def main():
                         help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
-    parser.add_argument('--dataset', '-i', default='./image/fsm',
+    parser.add_argument('--dataset', '-i', default='./image/fsm-all',
                         help='Directory of image files.')
     parser.add_argument('--out', '-o', default='result',
                         help='Directory to output the result')
@@ -70,10 +70,10 @@ def main():
     opt_dis = make_optimizer(dis)
 
     train_d = HiResoDataset(
-        "{}/main/front".format(args.dataset),
+        "{}/main".format(args.dataset),
     )
     test_d = HiResoDataset(
-        "{}/test/front".format(args.dataset),        
+        "{}/test".format(args.dataset),        
     )
     # train_d = FacadeDataset(
     #     "{}/main/back".format(args.dataset),
@@ -124,7 +124,7 @@ def main():
     trainer.extend(
         out_image(
             updater, enc, dec,
-            2, 2, args.seed, args.out),
+            4, 4, args.seed, args.out),
         trigger=preview_interval)
 
     if args.resume:
