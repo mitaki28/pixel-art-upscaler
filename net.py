@@ -9,6 +9,32 @@ from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 
+class PixelShuffler(chainer.Chain):
+
+    def __init__(self, in_channels, out_channels, r, ksize=None, nobias=False, initialW=None, initial_bias=None):
+        self.r = int(r)
+        super().__init__(
+            conv=L.Convolution2D(in_channels, (r ** 2) * out_channels, ksize, 1, 1, nobias, initialW, initial_bias),
+        )
+
+    def __call__(self, x):
+        r = self.r
+        out = self.conv(x) # 畳み込み
+        batchsize = out.shape[0]
+        in_channels = out.shape[1]
+        out_channels = in_channels // (r ** 2)
+        in_height = out.shape[2]
+        in_width = out.shape[3]
+        out_height = in_height * r
+        out_width = in_width * r
+        out = F.reshape(out, (batchsize, 1, r * r, out_channels * in_height * in_width, 1))
+        out = F.transpose(out, (0, 1, 3, 2, 4))
+        out = F.reshape(out, (batchsize, out_channels, in_height, in_width, r, r))
+        out = F.transpose(out, (0, 1, 2, 4, 3, 5))
+        out = F.reshape(out, (batchsize, out_channels, out_height, out_width))
+        return out
+
+
 # U-net https://arxiv.org/pdf/1611.07004v1.pdf
 
 # convolution-batchnormalization-(dropout)-relu
@@ -24,9 +50,9 @@ class CBR(chainer.Chain):
         elif sample=='down-b':
             layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
         elif sample=='up':
-            layers['c'] = L.Deconvolution2D(ch0, ch1, 4, 2, 1, initialW=w)
+            layers['c'] = PixelShuffler(ch0, ch1, 2, 3, initialW=w)
         elif sample=='up-b':
-            layers['c'] = L.Deconvolution2D(ch0, ch1, 5, 1, 2, initialW=w)
+            layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
         else:
             assert False, 'unknown sample {}'.format(sample)
         if bn:
