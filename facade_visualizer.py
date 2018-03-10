@@ -15,8 +15,8 @@ def out_image_base(updater, xp, rows, cols, seed, dst, converter):
         np.random.seed(seed)
         n_images = rows * cols
         
-        w_in = 128
-        w_out = 128
+        w_in = 64
+        w_out = 64
         in_ch = 4
         out_ch = 4
         
@@ -59,13 +59,13 @@ def out_image_base(updater, xp, rows, cols, seed, dst, converter):
                 os.makedirs(preview_dir)
             Image.fromarray(x, mode=mode).convert('RGBA').save(preview_path)
         
-        x = np.asarray(np.clip(gen_all * 128 + 128, 0.0, 255.0), dtype=np.uint8)
+        x = np.asarray(np.clip(gen_all * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gen")
         
-        x = np.asarray(np.clip(in_all * 128 + 128, 0.0, 255.0), dtype=np.uint8)
+        x = np.asarray(np.clip(in_all * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "in")
         
-        x = np.asarray(np.clip(gt_all * 128+128, 0.0, 255.0), dtype=np.uint8)
+        x = np.asarray(np.clip(gt_all * 127.5+127.5, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gt")
         
     return make_image
@@ -84,12 +84,12 @@ def out_image2(updater, enc0, dec0, enc, dec, rows, cols, seed, dst):
 
 def convert_image_base(imgs, xp, converter):
         batchsize = 4
-        w_in = 128
+        w_in = 64
         w_out = 64
         #w_out, h_out = imgs[0].size
         #assert w_out == h_out
         imgs = np.asarray([
-            (np.asarray(img.convert('RGBA').resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 128) / 128
+            (np.asarray(img.convert('RGBA').resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 127.5) / 127.5
             for img
             in imgs
         ])
@@ -111,7 +111,7 @@ def convert_image_base(imgs, xp, converter):
             else:
                 x = x.reshape((H, W, C))
             ret.append(Image.fromarray(
-                np.asarray(xp.clip(x * 128 + 128, 0.0, 255.0), dtype=np.uint8)
+                np.asarray(xp.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
             ).resize((w_out, w_out), Image.NEAREST))
         return ret
 

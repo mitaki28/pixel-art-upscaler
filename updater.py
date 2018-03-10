@@ -59,8 +59,8 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         batchsize = len(batch)
         in_ch = batch[0][0].shape[0]
         out_ch = batch[0][1].shape[0]
-        w_in = 128
-        w_out = 128
+        w_in = 64
+        w_out = 64
         
         x_in = xp.zeros((batchsize, in_ch, w_in, w_in)).astype("f")
         t_out = xp.zeros((batchsize, out_ch, w_out, w_out)).astype("f")
@@ -130,8 +130,8 @@ class FacadeUpdater2(chainer.training.StandardUpdater):
         batchsize = len(batch)
         in_ch = batch[0][0].shape[0]
         out_ch = batch[0][1].shape[0]
-        w_in = 128
-        w_out = 128
+        w_in = 64
+        w_out = 64
         
         x_in = xp.zeros((batchsize, in_ch, w_in, w_in)).astype("f")
         t_out = xp.zeros((batchsize, out_ch, w_out, w_out)).astype("f")

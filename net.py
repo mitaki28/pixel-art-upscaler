@@ -21,8 +21,14 @@ class CBR(chainer.Chain):
         w = chainer.initializers.Normal(0.02)
         if sample=='down':
             layers['c'] = L.Convolution2D(ch0, ch1, 4, 2, 1, initialW=w)
-        else:
+        elif sample=='down-b':
+            layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
+        elif sample=='up':
             layers['c'] = L.Deconvolution2D(ch0, ch1, 4, 2, 1, initialW=w)
+        elif sample=='up-b':
+            layers['c'] = L.Deconvolution2D(ch0, ch1, 5, 1, 2, initialW=w)
+        else:
+            assert False, 'unknown sample {}'.format(sample)
         if bn:
             layers['batchnorm'] = L.BatchNormalization(ch1)
         super(CBR, self).__init__(**layers)
@@ -41,9 +47,9 @@ class Encoder(chainer.Chain):
     def __init__(self, in_ch):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0'] = L.Convolution2D(in_ch, 64, 3, 1, 1, initialW=w)
-        layers['c1'] = CBR(64, 128, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c2'] = CBR(128, 256, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c0'] = L.Convolution2D(in_ch, 64, 5, 1, 2, initialW=w)
+        layers['c1'] = CBR(64, 128, bn=True, sample='down-b', activation=F.leaky_relu, dropout=False)
+        layers['c2'] = CBR(128, 256, bn=True, sample='down-b', activation=F.leaky_relu, dropout=False)
         layers['c3'] = CBR(256, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c4'] = CBR(512, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c5'] = CBR(512, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
@@ -66,9 +72,9 @@ class Decoder(chainer.Chain):
         layers['c2'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
         layers['c3'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=False)
         layers['c4'] = CBR(1024, 256, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c5'] = CBR(512, 128, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c6'] = CBR(256, 64, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c7'] = L.Convolution2D(128, out_ch, 3, 1, 1, initialW=w)
+        layers['c5'] = CBR(512, 128, bn=True, sample='up-b', activation=F.relu, dropout=False)
+        layers['c6'] = CBR(256, 64, bn=True, sample='up-b', activation=F.relu, dropout=False)
+        layers['c7'] = L.Convolution2D(128, out_ch, 5, 1, 2, initialW=w)
         super(Decoder, self).__init__(**layers)
 
     def __call__(self, hs):
@@ -86,9 +92,9 @@ class Discriminator(chainer.Chain):
     def __init__(self, in_ch, out_ch):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0_0'] = CBR(in_ch, 32, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c0_1'] = CBR(out_ch, 32, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c1'] = CBR(64, 128, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c0_0'] = CBR(in_ch, 32, bn=False, sample='down-b', activation=F.leaky_relu, dropout=False)
+        layers['c0_1'] = CBR(out_ch, 32, bn=False, sample='down-b', activation=F.leaky_relu, dropout=False)
+        layers['c1'] = CBR(64, 128, bn=True, sample='down-b', activation=F.leaky_relu, dropout=False)
         layers['c2'] = CBR(128, 256, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c3'] = CBR(256, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c4'] = L.Convolution2D(512, 1, 3, 1, 1, initialW=w)
@@ -108,8 +114,8 @@ class Discriminator2(chainer.Chain):
         layers = {}
         w = chainer.initializers.Normal(0.02)
         layers['c0'] = CBR(out_ch, 64, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c1'] = CBR(64, 128, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c2'] = CBR(128, 256, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c1'] = CBR(64, 128, bn=True, sample='down-b', activation=F.leaky_relu, dropout=False)
+        layers['c2'] = CBR(128, 256, bn=True, sample='down-b', activation=F.leaky_relu, dropout=False)
         layers['c3'] = CBR(256, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c4'] = L.Convolution2D(512, 1, 3, 1, 1, initialW=w)
         super().__init__(**layers)

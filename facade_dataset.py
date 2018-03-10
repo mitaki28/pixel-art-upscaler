@@ -16,9 +16,9 @@ class FacadeDataset(dataset_mixin.DatasetMixin):
         self.dataset = []
         for filepath in self.dataDir.glob("*.png"):
             with Image.open(self.dataDir/filepath.name) as f:
-                img = np.asarray(f.resize((128, 128), Image.NEAREST)).astype("f").transpose(2,0,1)/128.0-1.0                
+                img = np.asarray(f.resize((64, 64), Image.NEAREST)).astype("f").transpose(2,0,1)/127.5-1.0                
             with Image.open(self.labelDir/filepath.name) as f:
-                label = np.asarray(f.resize((128, 128), Image.NEAREST)).astype("f").transpose(2,0,1)/128.0-1.0
+                label = np.asarray(f.resize((64, 64), Image.NEAREST)).astype("f").transpose(2,0,1)/127.5-1.0
             self.dataset.append((img,label))
         print("load dataset done")
     
@@ -58,7 +58,7 @@ class HiResoDataset(dataset_mixin.DatasetMixin):
         img = random_crop(img, (64, 64))
         img = random_flip(img, x_random=True)
 
-        label = resize(resize(img, (32, 32), Image.NEAREST), (128, 128), Image.NEAREST)
-        img = resize(img, (128, 128), Image.NEAREST)
+        label = resize(resize(img, (32, 32), Image.NEAREST), (64, 64), Image.NEAREST)
+        img = resize(img, (64, 64), Image.NEAREST)
         return label, img
     
