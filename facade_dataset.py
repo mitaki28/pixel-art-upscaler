@@ -47,13 +47,13 @@ class HiResoDataset(dataset_mixin.DatasetMixin):
         img = self.dataset[i]
 
         # random background color
-        bgMask = ((-img + 1.0) / 2.0)[3,:,:]
-        bgMaskR = bgMask * (random() * 2.0 - 1.0)
-        bgMaskG = bgMask * (random() * 2.0 - 1.0)
-        bgMaskB = bgMask * (random() * 2.0 - 1.0)
-        img[0,:,:] += bgMaskR
-        img[1,:,:] += bgMaskG
-        img[2,:,:] += bgMaskB
+        # bgMask = ((-img + 1.0) / 2.0)[3,:,:]
+        # bgMaskR = bgMask * (random() * 2.0 - 1.0)
+        # bgMaskG = bgMask * (random() * 2.0 - 1.0)
+        # bgMaskB = bgMask * (random() * 2.0 - 1.0)
+        # img[0,:,:] += bgMaskR
+        # img[1,:,:] += bgMaskG
+        # img[2,:,:] += bgMaskB
 
         img = random_crop(img, (64, 64))
         img = random_flip(img, x_random=True)
