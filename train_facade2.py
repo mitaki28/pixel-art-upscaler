@@ -75,6 +75,15 @@ def main():
         optimizer.setup(model)
         optimizer.add_hook(chainer.optimizer.WeightDecay(0.00001), 'hook_dec')
         return optimizer
+
+
+    # Setup an optimizer
+    # def make_optimizer(model, alpha=0.0002, beta1=0.5):
+    #     optimizer = chainer.optimizers.SGD(0.000002)
+    #     optimizer.setup(model)
+    #     optimizer.add_hook(chainer.optimizer.WeightDecay(0.00001), 'hook_dec')
+    #     return optimizer
+
     opt_enc = make_optimizer(enc)
     opt_dec = make_optimizer(dec)
     opt_dis = make_optimizer(dis)
