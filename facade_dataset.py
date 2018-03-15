@@ -32,19 +32,16 @@ class FacadeDataset(dataset_mixin.DatasetMixin):
 class HiResoDataset(dataset_mixin.DatasetMixin):
     def __init__(self, labelDir):
         self.labelDir = Path(labelDir)
-        self.dataset = []
-        for filepath in self.labelDir.glob("*.png"):
-            with Image.open(str(filepath)) as f:
-                img = np.asarray(f.convert('RGBA')).astype("f").transpose((2, 0, 1))
-                self.dataset.append(img / 127.5 - 1.0)
-        print("{} images loaded".format(len(self.dataset)))
+        self.filepaths = list(self.labelDir.glob("*.png"))
+        print("{} images loaded".format(len(self.filepaths)))
     
     def __len__(self):
-        return len(self.dataset)
+        return len(self.filepaths)
 
     # return (label, img)
     def get_example(self, i):
-        img = self.dataset[i]
+        with Image.open(str(self.filepaths[i])) as f:
+            img = np.asarray(f.convert('RGBA')).astype("f").transpose((2, 0, 1)) / 127.5 - 1.0
 
         # random background color
         # bgMask = ((-img + 1.0) / 2.0)[3,:,:]
