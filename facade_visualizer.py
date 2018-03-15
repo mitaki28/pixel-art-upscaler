@@ -15,8 +15,8 @@ def out_image_base(updater, xp, rows, cols, seed, dst, converter):
         np.random.seed(seed)
         n_images = rows * cols
         
-        w_in = 64
-        w_out = 64
+        w_in = 128
+        w_out = 128
         in_ch = 4
         out_ch = 4
         
@@ -84,8 +84,8 @@ def out_image2(updater, enc0, dec0, enc, dec, rows, cols, seed, dst):
 
 def convert_image_base(imgs, xp, converter):
         batchsize = 4
-        w_in = 64
-        w_out = 64
+        w_in = 128
+        w_out = 128
         #w_out, h_out = imgs[0].size
         #assert w_out == h_out
         imgs = np.asarray([
