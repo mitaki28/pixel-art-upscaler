@@ -50,7 +50,8 @@ class CBR(chainer.Chain):
         elif sample=='down-b':
             layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
         elif sample=='up':
-            layers['c'] = PixelShuffler(ch0, ch1, 2, initialW=w)
+            layers['c'] = L.Deconvolution2D(ch0, ch1, 4, 2, 1, initialW=w)
+            # layers['c'] = PixelShuffler(ch0, ch1, 2, initialW=w)
         elif sample=='up-b':
             layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
         else:
