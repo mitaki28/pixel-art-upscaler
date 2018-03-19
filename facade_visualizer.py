@@ -76,12 +76,6 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
             return dec(enc(x_in))
     return out_image_base(updater, enc.xp, rows, cols, seed, dst, converter)
 
-def out_image2(updater, enc0, dec0, enc, dec, rows, cols, seed, dst):
-    def converter(x_in):
-        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-            return dec(enc(dec0(enc0(x_in))))
-    return out_image_base(updater, enc.xp, rows, cols, seed, dst, converter)
-
 def convert_image_base(imgs, xp, converter):
         batchsize = 1
         w_in = 128
@@ -120,11 +114,4 @@ def convert_image(imgs, enc, dec):
     def converter(x_in):
         with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
             return dec(enc(x_in))
-    return convert_image_base(imgs, enc.xp, converter)
-
-
-def convert_image2(imgs, enc0, dec0, enc, dec):
-    def converter(x_in):
-        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-            return dec(enc(dec0(enc0(x_in))))
     return convert_image_base(imgs, enc.xp, converter)
