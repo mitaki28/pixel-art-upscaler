@@ -21,23 +21,16 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         super(FacadeUpdater, self).__init__(*args, **kwargs)
 
 
-    def loss_enc(self, enc, x_out, x_in, y_out, lam1=100, lam2=1):
+    def loss_gen(self, enc, x_out, x_in, y_out, lam1=100, lam2=1):
         batchsize,_,w,h = y_out.data.shape
         loss_rec = lam1*(F.mean_absolute_error(x_out, x_in))
         loss_adv = lam2*F.sum(F.softplus(-y_out)) / batchsize / w / h
         loss = loss_rec + loss_adv
+        chainer.report({'loss_rec': loss_rec}, enc)
+        chainer.report({'loss_adv': loss_adv}, enc)
         chainer.report({'loss': loss}, enc)
         return loss
-        
-    def loss_dec(self, dec, x_out, x_in, y_out, lam1=100, lam2=1):
-        batchsize,_,w,h = y_out.data.shape
-        loss_rec = lam1*(F.mean_absolute_error(x_out, x_in))
-        loss_adv = lam2*F.sum(F.softplus(-y_out)) / batchsize / w / h
-        loss = loss_rec + loss_adv
-        chainer.report({'loss': loss}, dec)
-        return loss
-        
-        
+
     def loss_dis(self, dis, y_in, y_out):
         batchsize,_,w,h = y_in.data.shape
         
@@ -77,10 +70,10 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         y_real = dis(x_in, t_out)
 
 
-        enc_optimizer.update(self.loss_enc, enc, x_out, t_out, y_fake)
+        enc_optimizer.update(self.loss_gen, enc, x_out, t_out, y_fake)
         for z_ in z:
             z_.unchain_backward()
-        dec_optimizer.update(self.loss_dec, dec, x_out, t_out, y_fake)
+        dec_optimizer.update(self.loss_gen, dec, x_out, t_out, y_fake)
         x_in.unchain_backward()
         x_out.unchain_backward()
         dis_optimizer.update(self.loss_dis, dis, y_real, y_fake)
