@@ -83,9 +83,9 @@ def out_image2(updater, enc0, dec0, enc, dec, rows, cols, seed, dst):
     return out_image_base(updater, enc.xp, rows, cols, seed, dst, converter)
 
 def convert_image_base(imgs, xp, converter):
-        batchsize = 4
+        batchsize = 1
         w_in = 128
-        w_out = 128
+        w_out = 64
         #w_out, h_out = imgs[0].size
         #assert w_out == h_out
         imgs = np.asarray([
@@ -112,7 +112,7 @@ def convert_image_base(imgs, xp, converter):
                 x = x.reshape((H, W, C))
             ret.append(Image.fromarray(
                 np.asarray(xp.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
-            ).resize((w_out, w_out), Image.NEAREST))
+            ).resize((w_out, w_out), Image.BOX))
         return ret
 
 

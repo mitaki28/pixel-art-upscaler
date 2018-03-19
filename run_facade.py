@@ -21,15 +21,18 @@ from updater import FacadeUpdater
 from facade_dataset import FacadeDataset
 from facade_visualizer import convert_image
 
+from pathlib import Path
+
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
     parser.add_argument('images', help='path to input images', metavar='image', type=str, nargs='+',)
     parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--out', '-o', type=str, default='out/converted', help='path to output directory')
-    parser.add_argument('--encoder', help='path to encoder model')
-    parser.add_argument('--decoder', help='path to decoder model')
+    parser.add_argument('--model_dir', help='path to model directory')
+    parser.add_argument('--iter', type=int, help='iteration of load model')
     args = parser.parse_args()
 
+    model_dir = Path(args.model_dir)
     print('GPU: {}'.format(args.gpu))
     print('')
 
@@ -43,8 +46,8 @@ def main():
         dec.to_gpu()
         dis.to_gpu()
 
-    chainer.serializers.load_npz(args.encoder, enc)
-    chainer.serializers.load_npz(args.decoder, dec)
+    chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(args.iter), enc)
+    chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(args.iter), dec)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
