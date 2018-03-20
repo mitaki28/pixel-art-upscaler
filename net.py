@@ -125,8 +125,7 @@ class DownscaleDecoder(chainer.Chain):
         layers['c2'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
         layers['c3'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=False)
         layers['c4'] = CBR(1024, 256, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c5'] = CBR(512, 128, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c6'] = L.Convolution2D(256, out_ch, 3, 1, 1, initialW=w)
+        layers['c5'] = L.Convolution2D(512, out_ch, 3, 1, 1, initialW=w)
         self.n_layers = len(layers)
         super().__init__(**layers)
 
@@ -135,7 +134,7 @@ class DownscaleDecoder(chainer.Chain):
         for i in range(1, self.n_layers):
             h = F.concat([h, hs[-i-1]])
             h = self['c%d'%i](h)
-        return nearest_neighbor(h)
+        return nearest_neighbor(h, 4)
 
 class Discriminator(chainer.Chain):
     def __init__(self, in_ch, out_ch):
