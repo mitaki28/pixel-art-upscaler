@@ -19,10 +19,10 @@ def argument_image(x, char_size, fine_size, is_crop_random=True, is_flip_random=
     pW, pH = ((fW - cW), (fH - cH))
     if is_crop_random:
         assert pW >= 0 and pW % 2 == 0 and pH >= 0 and pH % 2 == 0
-        x = resize_contain(x, (fW + pW, fH + pH), x[:,0,0])
-        x = random_crop(x, (fW, fH))
+        x = resize_contain(x, (fH + pH, fW + pW), x[:,0,0])
+        x = random_crop(x, (fH, fW))
     else:
-        x = resize_contain(x, (fW, fH), x[:,0,0])
+        x = resize_contain(x, (fH, fW), x[:,0,0])
     if is_flip_random:
         x = random_flip(x, x_random=True)
     return x
