@@ -53,11 +53,11 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     image_paths = [Path(image_path_str) for image_path_str in args.images]
-    imgs = [Image.open(str(image_path)) for image_path in image_paths]
-
-    converted_imgs = convert_image(imgs, enc, dec)
-    for image_path, img in zip(image_paths, converted_imgs):
-        img.convert('RGBA').save(out/image_path.name)
+    for image_path in image_paths:
+        out_path = out/image_path.name
+        with Image.open(image_path) as img:
+            convert_image(img, enc, dec).convert('RGBA').save(out_path)
+            print(image_path, '->', out_path)
         
 
 if __name__ == '__main__':

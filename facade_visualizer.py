@@ -76,42 +76,30 @@ def out_image(updater, enc, dec, rows, cols, seed, dst):
             return dec(enc(x_in))
     return out_image_base(updater, enc.xp, rows, cols, seed, dst, converter)
 
-def convert_image_base(imgs, xp, converter):
+def convert_image_base(img, xp, converter):
         batchsize = 1
         w_in = 128
         w_out = 64
-        #w_out, h_out = imgs[0].size
-        #assert w_out == h_out
-        imgs = np.asarray([
-            (np.asarray(img.convert('RGBA').resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 127.5) / 127.5
-            for img
-            in imgs
-        ])
 
-        xs = []
-        for i in range((len(imgs) - 1) // batchsize + 1):
-            imgs_chunk = imgs[i*batchsize:(i+1)*batchsize]
-            x_in = Variable(imgs_chunk)
-            x_out = converter(x_in)
-            xs.extend(x_out.data)
-            print((i + 1) * batchsize, 'images done')
+        img = (xp.asarray(img.convert('RGBA').resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 127.5) / 127.5
 
-        ret = []
-        for x in xs:
-            C, H, W = x.shape
-            x = x.transpose(1, 2, 0)
-            if C==1:
-                x = x.reshape((H, W))
-            else:
-                x = x.reshape((H, W, C))
-            ret.append(Image.fromarray(
-                np.asarray(xp.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
-            ).resize((w_out, w_out), Image.BOX))
-        return ret
+        x_in = Variable(img.reshape(1, *img.shape))
+        x_out = converter(x_in)
+        x = chainer.cuda.to_cpu(x_out.data)[0]
+
+        C, H, W = x.shape
+        x = x.transpose(1, 2, 0)
+        if C==1:
+            x = x.reshape((H, W))
+        else:
+            x = x.reshape((H, W, C))
+        return Image.fromarray(
+            np.asarray(xp.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
+        ).resize((w_out, w_out), Image.BOX)
 
 
-def convert_image(imgs, enc, dec):
+def convert_image(img, enc, dec):
     def converter(x_in):
         with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
             return dec(enc(x_in))
-    return convert_image_base(imgs, enc.xp, converter)
+    return convert_image_base(img, enc.xp, converter)
