@@ -57,7 +57,7 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         
         x_in = xp.zeros((batchsize, in_ch, w_in, w_in)).astype("f")
         t_out = xp.zeros((batchsize, out_ch, w_out, w_out)).astype("f")
-        
+
         for i in range(batchsize):
             x_in[i,:] = xp.asarray(batch[i][0])
             t_out[i,:] = xp.asarray(batch[i][1])
@@ -77,4 +77,10 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         x_in.unchain_backward()
         x_out.unchain_backward()
         dis_optimizer.update(self.loss_dis, dis, y_real, y_fake)
+
+    
+    def _debug(self, x, name):
+        Image.fromarray(np.asarray(np.clip(np.asarray(x.data) * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8).reshape(x.data.shape[1:]).transpose((1, 2, 0))).save('result/preview/debug-{}.png'.format(name))
+
+        
 
