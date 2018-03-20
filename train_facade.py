@@ -14,9 +14,10 @@ from chainer import serializers
 from net import Discriminator
 from net import Encoder
 from net import Decoder
+from net import DownscaleDecoder
 from updater import FacadeUpdater
 
-from facade_dataset import FacadeDataset, HiResoDataset
+from facade_dataset import PairDataset, NNDownscaleDataset
 from facade_visualizer import out_image
 
 def main():
@@ -41,6 +42,10 @@ def main():
                         help='Interval of displaying log to console')
     parser.add_argument('--preview_interval', type=int, default=100,
                         help='Interval of previewing generated image')
+    parser.add_argument('--downscale', type=bool, default=False,
+                        help='scale output image to half size or not')
+    parser.add_argument('--nn-downscale-label', type=bool, default=True,
+                        help='automatically generate NN-downscaled label')
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -50,7 +55,12 @@ def main():
 
     # Set up a neural network to train
     enc = Encoder(in_ch=4)
-    dec = Decoder(out_ch=4)
+    if downscale:
+        print('# Downscale Learning Enabled')
+        dec = DownscaleDecoder(out_ch=4)
+    else:
+        print('# Downscale Learning Disabled')
+        dec = Decoder(out_ch=4)        
     dis = Discriminator(in_ch=4, out_ch=4)
     
     if args.gpu >= 0:
@@ -69,22 +79,25 @@ def main():
     opt_dec = make_optimizer(dec)
     opt_dis = make_optimizer(dis)
 
-    train_d = HiResoDataset(
-        "{}/main".format(args.dataset),
-    )
-    test_d = HiResoDataset(
-        "{}/test".format(args.dataset),        
-    )
-    # train_d = FacadeDataset(
-    #     "{}/main/back".format(args.dataset),
-    #     "{}/main/front".format(args.dataset),
-    # )
-    # test_d = FacadeDataset(
-    #     "{}/test/back".format(args.dataset),
-    #     "{}/test/front".format(args.dataset),        
-    # )
-    #train_iter = chainer.iterators.MultiprocessIterator(train_d, args.batchsize, n_processes=4)
-    #test_iter = chainer.iterators.MultiprocessIterator(test_d, args.batchsize, n_processes=4)
+    if args.nn_downscaled_label:
+        print('# Automatically NN-downscaled images generated')
+        train_d = NNDownscaleDataset(
+            "{}/main".format(args.dataset),
+        )
+        test_d = NNDownscaleDataset(
+            "{}/test".format(args.dataset),        
+        )
+    else:
+        print('# Use labels')
+        train_d = PairDataset(
+            "{}/main/train".format(args.dataset),
+            "{}/main/label".format(args.dataset),            
+        )
+        test_d = PairDataset(
+            "{}/test/train".format(args.dataset),        
+            "{}/test/label".format(args.dataset),
+        )
+
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test_d, args.batchsize)
 

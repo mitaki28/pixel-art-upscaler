@@ -9,6 +9,8 @@ from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 
+from functions.nearest_neighbor import nearest_neighbor
+
 # https://gist.github.com/musyoku/849094afca2889d9024f59e683fa7036
 class PixelShuffler(chainer.Chain):
 
@@ -114,7 +116,27 @@ class Decoder(chainer.Chain):
                 h = self.c7(h)
         return h
 
-    
+class DownscaleDecoder(chainer.Chain):
+    def __init__(self, out_ch):
+        layers = {}
+        w = chainer.initializers.Normal(0.02)
+        layers['c0'] = CBR(512, 512, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c1'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c2'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c3'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c4'] = CBR(1024, 256, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c5'] = CBR(512, 128, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c6'] = L.Convolution2D(256, out_ch, 3, 1, 1, initialW=w)
+        self.n_layers = len(layers)
+        super().__init__(**layers)
+
+    def __call__(self, hs):
+        h = self.c0(hs[-1])
+        for i in range(1, self.n_layers):
+            h = F.concat([h, hs[-i-1]])
+            h = self['c%d'%i](h)
+        return nearest_neighbor(h)
+
 class Discriminator(chainer.Chain):
     def __init__(self, in_ch, out_ch):
         layers = {}
