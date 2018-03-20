@@ -42,10 +42,8 @@ def main():
                         help='Interval of displaying log to console')
     parser.add_argument('--preview_interval', type=int, default=100,
                         help='Interval of previewing generated image')
-    parser.add_argument('--downscale', type=bool, default=False,
+    parser.add_argument('--downscale', action='store_true', default=False,
                         help='scale output image to half size or not')
-    parser.add_argument('--nn-downscale-label', type=bool, default=True,
-                        help='automatically generate NN-downscaled label')
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -55,7 +53,7 @@ def main():
 
     # Set up a neural network to train
     enc = Encoder(in_ch=4)
-    if downscale:
+    if args.downscale:
         print('# Downscale Learning Enabled')
         dec = DownscaleDecoder(out_ch=4)
     else:
@@ -79,8 +77,7 @@ def main():
     opt_dec = make_optimizer(dec)
     opt_dis = make_optimizer(dis)
 
-    if args.nn_downscaled_label:
-        print('# Automatically NN-downscaled images generated')
+    if not args.downscale:
         train_d = NNDownscaleDataset(
             "{}/main".format(args.dataset),
         )
@@ -88,7 +85,6 @@ def main():
             "{}/test".format(args.dataset),        
         )
     else:
-        print('# Use labels')
         train_d = PairDataset(
             "{}/main/train".format(args.dataset),
             "{}/main/label".format(args.dataset),            
