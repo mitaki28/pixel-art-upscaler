@@ -9,8 +9,6 @@ from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 
-from functions.nearest_neighbor import nearest_neighbor
-
 # https://gist.github.com/musyoku/849094afca2889d9024f59e683fa7036
 class PixelShuffler(chainer.Chain):
 
@@ -134,7 +132,7 @@ class DownscaleDecoder(chainer.Chain):
         for i in range(1, self.n_layers):
             h = F.concat([h, hs[-i-1]])
             h = self['c%d'%i](h)
-        return nearest_neighbor(h, 4)
+        return F.unpooling_2d(h, 4, 4, 0, cover_all=False)
 
 class Discriminator(chainer.Chain):
     def __init__(self, in_ch, out_ch):
