@@ -129,11 +129,7 @@ def main():
         'epoch', 'iteration', 'enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
-    trainer.extend(
-        out_image(
-            updater, enc, dec,
-            4, 4, args.seed, args.out),
-        trigger=preview_interval)
+    trainer.extend(out_image(updater, enc, dec, 8, args.seed, args.out), trigger=preview_interval)
 
     if args.resume:
         # Resume from a snapshot

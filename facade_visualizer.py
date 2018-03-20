@@ -9,22 +9,25 @@ import chainer
 import chainer.cuda
 from chainer import Variable
 
-def out_image_base(updater, xp, rows, cols, seed, dst, converter):
+def out_image_base(updater, xp, n, seed, dst, converter):
     @chainer.training.make_extension()
     def make_image(trainer):
         np.random.seed(seed)
-        n_images = rows * cols
+
+        n_pattern = 3
+        n_images = n * n_pattern
+
+        rows = n
+        cols = n_pattern
         
         w_in = 128
         w_out = 128
         in_ch = 4
         out_ch = 4
         
-        in_all = np.zeros((n_images, in_ch, w_in, w_in)).astype("f")
-        gt_all = np.zeros((n_images, out_ch, w_out, w_out)).astype("f")
-        gen_all = np.zeros((n_images, out_ch, w_out, w_out)).astype("f")
+        ret = []
         
-        for it in range(n_images):
+        for it in range(n):
             batch = updater.get_iterator('test').next()
             batchsize = len(batch)
 
@@ -38,10 +41,9 @@ def out_image_base(updater, xp, rows, cols, seed, dst, converter):
             x_in = Variable(x_in)
             x_out = converter(x_in)
             
-            in_all[it,:] = x_in.data[0,:]
-            gt_all[it,:] = t_out[0,:]
-            gen_all[it,:] = x_out.data[0,:]
-        
+            ret.append(chainer.cuda.to_cpu(x_in.data)[0,:])
+            ret.append(chainer.cuda.to_cpu(t_out)[0,:])
+            ret.append(chainer.cuda.to_cpu(x_out.data)[0,:])
         
         def save_image(x, name, mode=None):
             _, C, H, W = x.shape
@@ -59,22 +61,16 @@ def out_image_base(updater, xp, rows, cols, seed, dst, converter):
                 os.makedirs(preview_dir)
             Image.fromarray(x, mode=mode).convert('RGBA').save(preview_path)
         
-        x = np.asarray(np.clip(gen_all * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
+        x = np.asarray(np.clip(np.asarray(ret) * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gen")
-        
-        x = np.asarray(np.clip(in_all * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
-        save_image(x, "in")
-        
-        x = np.asarray(np.clip(gt_all * 127.5+127.5, 0.0, 255.0), dtype=np.uint8)
-        save_image(x, "gt")
         
     return make_image
 
-def out_image(updater, enc, dec, rows, cols, seed, dst):
+def out_image(updater, enc, dec, n, seed, dst):
     def converter(x_in):
         with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
             return dec(enc(x_in))
-    return out_image_base(updater, enc.xp, rows, cols, seed, dst, converter)
+    return out_image_base(updater, enc.xp, n, seed, dst, converter)
 
 def convert_image_base(img, xp, converter):
         batchsize = 1
