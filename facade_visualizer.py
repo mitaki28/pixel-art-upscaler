@@ -8,6 +8,7 @@ from PIL import Image
 import chainer
 import chainer.cuda
 from chainer import Variable
+from chainercv.transforms import resize
 
 def out_image_base(updater, xp, n, seed, dst, converter):
     @chainer.training.make_extension()
@@ -61,6 +62,7 @@ def out_image_base(updater, xp, n, seed, dst, converter):
                 os.makedirs(preview_dir)
             Image.fromarray(x, mode=mode).convert('RGBA').save(preview_path)
         
+        ret = [resize(x, (w_out, w_out), Image.NEAREST) for x in ret]
         x = np.asarray(np.clip(np.asarray(ret) * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gen")
         
