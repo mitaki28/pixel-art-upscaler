@@ -82,3 +82,8 @@ class NNDownscaleDataset(dataset_mixin.DatasetMixin):
         label = resize(resize(img, (32, 32), Image.NEAREST), (128, 128), Image.NEAREST)
         img = resize(img, (128, 128), Image.NEAREST)
         return label, img
+
+class DownscaleDatasetReverse(NNDownscaleDataset):
+    def get_example(self, i):
+        label, img = super().get_example(i)
+        return img, label

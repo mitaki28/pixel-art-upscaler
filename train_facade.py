@@ -17,7 +17,7 @@ from net import Decoder
 from net import DownscaleDecoder
 from updater import FacadeUpdater
 
-from facade_dataset import PairDataset, NNDownscaleDataset
+from facade_dataset import PairDataset, NNDownscaleDataset, NNDownscaleDatasetReverse
 from facade_visualizer import out_image
 
 def main():
@@ -93,9 +93,8 @@ def main():
             "{}/main/train".format(args.dataset),
             "{}/main/label".format(args.dataset),            
         )
-        test_d = PairDataset(
-            "{}/test/train".format(args.dataset),        
-            "{}/test/label".format(args.dataset),
+        test_d = NNDownscaleDatasetReverse(
+            "{}/test".format(args.dataset),        
         )
 
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
