@@ -31,7 +31,7 @@ def argument_image(x, char_size, fine_size, is_crop_random=True, is_flip_random=
 # TODO padding, resize は全部 Dataset 側でやるようにしたい
 class PairDataset(dataset_mixin.DatasetMixin):
 
-    def __init__(self, dataDir, labelDir, charSize=(48, 64), fineSize=(64, 64)):
+    def __init__(self, dataDir, labelDir, charSize=(48, 48), fineSize=(64, 64)):
         self.charSize = charSize
         self.fineSize = fineSize
         self.dataDir = Path(dataDir)
