@@ -13,19 +13,21 @@ from chainercv.utils import read_image
 def convert_image(img):
     return np.asarray(img.convert('RGBA')).astype("f").transpose((2, 0, 1)) / 127.5 - 1.0
 
-def argument_image(x, char_size, fine_size, is_crop_random=True, is_flip_random=True):
+def argument_image(img, char_size, fine_size, is_crop_random=True, is_flip_random=True):
     cW, cH = char_size
     fW, fH = fine_size
     pW, pH = ((fW - cW), (fH - cH))
     if is_crop_random:
         assert pW >= 0 and pW % 2 == 0 and pH >= 0 and pH % 2 == 0
-        x = resize_contain(x, (fH + pH, fW + pW), x[:,0,0])
-        x = random_crop(x, (fH, fW))
+        x = resize_contain(img, (fH + pH, fW + pW), img[:,0,0])
+        x = 2 * np.random.randint(pW // 2)
+        y = 2 * np.random.randint(pH // 2)
+        img = img[:,y:y+fH,x:x+fW]
     else:
-        x = resize_contain(x, (fH, fW), x[:,0,0])
+        img = resize_contain(img, (fH, fW), img[:,0,0])
     if is_flip_random:
-        x = random_flip(x, x_random=True)
-    return x
+        img = random_flip(img, x_random=True)
+    return img
 
 
 # TODO padding, resize は全部 Dataset 側でやるようにしたい
