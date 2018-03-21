@@ -20,22 +20,42 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         self.enc, self.dec, self.dis = kwargs.pop('models')
         super(FacadeUpdater, self).__init__(*args, **kwargs)
 
+    def loss_func_adv_dis_fake_ls(self, y_fake):
+        return 0.5 * F.mean(y_fake ** 2)
 
-    def loss_gen(self, enc, x_out, x_in, y_out, lam1=100, lam2=1):
-        batchsize,_,w,h = y_out.data.shape
-        loss_rec = lam1*(F.mean_absolute_error(x_out, x_in))
-        loss_adv = lam2*F.sum(F.softplus(-y_out)) / batchsize / w / h
+    def loss_func_adv_dis_real_ls(self, y_real):
+        return 0.5 * F.mean((y_real - 1.0) ** 2)
+
+    def loss_func_adv_gen_ls(self, y_fake):
+        return 0.5 * F.mean((y_fake - 1.0) ** 2)
+
+    def loss_func_adv_dis_fake(self, y_fake):
+        batchsize,_,w,h = y_fake.data.shape
+        return F.sum(F.softplus(y_fake)) / batchsize / w / h
+
+    def loss_func_adv_dis_real(self, y_real):
+        batchsize,_,w,h = y_real.data.shape
+        return F.sum(F.softplus(-y_real)) / batchsize / w / h
+
+    def loss_func_adv_gen(self, y_fake):
+        batchsize,_,w,h = y_fake.data.shape
+        return F.sum(F.softplus(-y_fake)) / batchsize / w / h
+
+    def loss_func_rec_gen(self, x_in, x_out):
+        return F.mean_absolute_error(x_out, x_in)
+
+    def loss_gen(self, enc, x_out, x_in, y_fake, lam1=100, lam2=1):
+        loss_rec = lam1*self.loss_func_rec_gen(x_in, x_out)
+        loss_adv = lam2*self.loss_func_adv_gen(y_fake)
         loss = loss_rec + loss_adv
         chainer.report({'loss_rec': loss_rec}, enc)
         chainer.report({'loss_adv': loss_adv}, enc)
         chainer.report({'loss': loss}, enc)
         return loss
 
-    def loss_dis(self, dis, y_in, y_out):
-        batchsize,_,w,h = y_in.data.shape
-        
-        L1 = F.sum(F.softplus(-y_in)) / batchsize / w / h
-        L2 = F.sum(F.softplus(y_out)) / batchsize / w / h
+    def loss_dis(self, dis, y_real, y_fake):
+        L1 = self.loss_func_adv_dis_real(y_real)
+        L2 = self.loss_func_adv_dis_fake(y_fake)
         loss = L1 + L2
         chainer.report({'loss': loss}, dis)
         return loss
