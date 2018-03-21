@@ -9,6 +9,17 @@ from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 
+class NNConvolution2D(chainer.Chain):
+
+    def __init__(self, in_channels, out_channels, r, ksize=3, stride=1, padding=1, nobias=False, initialW=None, initial_bias=None):
+        self.r = r
+        super().__init__(
+            conv=L.Convolution2D(in_channels, out_channels, ksize, stride, padding, nobias, initialW, initial_bias),
+        )
+
+    def __call__(self, x):
+        return self.conv(F.unpooling_2d(x, self.r, self.r, 0, cover_all=False))
+
 # https://gist.github.com/musyoku/849094afca2889d9024f59e683fa7036
 class PixelShuffler(chainer.Chain):
 
@@ -49,7 +60,8 @@ class CBR(chainer.Chain):
             layers['c'] = L.Convolution2D(ch0, ch1, 4, 2, 1, initialW=w)
         elif sample=='up':
             layers['c'] = L.Deconvolution2D(ch0, ch1, 4, 2, 1, initialW=w)
-            # layers['c'] = PixelShuffler(ch0, ch1, 2, initialW=w)
+        elif sample=='up-nn':
+            layers['c'] = NNConvolution2D(ch0, ch1, 2, 5, 1, 2, initialW=w)
         elif sample=='none':
             layers['c'] = L.Convolution2D(ch0, ch1, 3, 1, 1, initialW=w)
             # layers['c'] = PixelShuffler(ch0, ch1, 2, initialW=w)
@@ -117,11 +129,11 @@ class DownscaleDecoder(chainer.Chain):
     def __init__(self, out_ch):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0'] = CBR(512, 512, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c1'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c2'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c3'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c4'] = CBR(1024, 256, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c0'] = CBR(512, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
+        layers['c1'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
+        layers['c2'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
+        layers['c3'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=False)
+        layers['c4'] = CBR(1024, 256, bn=True, sample='up-nn', activation=F.relu, dropout=False)
         layers['c5'] = CBR(512, 128, bn=True, sample='none', activation=F.relu, dropout=False)
         layers['c6'] = CBR(256, 64, bn=True, sample='none', activation=F.relu, dropout=False)
         layers['c7'] = L.Convolution2D(128, out_ch, 3, 1, 1, initialW=w)
