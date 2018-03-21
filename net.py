@@ -129,11 +129,11 @@ class DownscaleDecoder(chainer.Chain):
     def __init__(self, out_ch):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0'] = CBR(512, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
-        layers['c1'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
-        layers['c2'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
-        layers['c3'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=False)
-        layers['c4'] = CBR(1024, 256, bn=True, sample='up-nn', activation=F.relu, dropout=False)
+        layers['c0'] = CBR(512, 512, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c1'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c2'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c3'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c4'] = CBR(1024, 256, bn=True, sample='up', activation=F.relu, dropout=False)
         layers['c5'] = CBR(512, 128, bn=True, sample='none', activation=F.relu, dropout=False)
         layers['c6'] = CBR(256, 64, bn=True, sample='none', activation=F.relu, dropout=False)
         layers['c7'] = L.Convolution2D(128, out_ch, 3, 1, 1, initialW=w)
