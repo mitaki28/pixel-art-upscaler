@@ -10,6 +10,12 @@ from chainercv.transforms import resize_contain
 from chainercv.transforms import resize
 from chainercv.utils import read_image
 
+def random_crop_by_2(img, pH, pW, fH, fW):
+    y = 2 * np.random.randint(pH // 2)
+    x = 2 * np.random.randint(pW // 2)
+    img = img[:,y:y+fH,x:x+fW]
+    return img
+
 def convert_image(img):
     return np.asarray(img.convert('RGBA')).astype("f").transpose((2, 0, 1)) / 127.5 - 1.0
 
@@ -19,10 +25,8 @@ def argument_image(img, char_size, fine_size, is_crop_random=True, is_flip_rando
     pW, pH = ((fW - cW), (fH - cH))
     if is_crop_random:
         assert pW >= 0 and pW % 2 == 0 and pH >= 0 and pH % 2 == 0
-        x = resize_contain(img, (fH + pH, fW + pW), img[:,0,0])
-        x = 2 * np.random.randint(pW // 2)
-        y = 2 * np.random.randint(pH // 2)
-        img = img[:,y:y+fH,x:x+fW]
+        img = resize_contain(img, (fH + pH, fW + pW), img[:,0,0])
+        img = random_crop_by_2(img, pH, pW, fH, fW)
     else:
         img = resize_contain(img, (fH, fW), img[:,0,0])
     if is_flip_random:
