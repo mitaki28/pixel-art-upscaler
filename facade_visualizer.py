@@ -8,7 +8,7 @@ from PIL import Image
 import chainer
 import chainer.cuda
 from chainer import Variable
-from chainercv.transforms import resize
+from chainercv.transforms import resize, resize_contain
 
 def out_image_base(updater, xp, n, seed, dst, converter):
     @chainer.training.make_extension()
@@ -21,29 +21,18 @@ def out_image_base(updater, xp, n, seed, dst, converter):
         rows = n
         cols = n_pattern
         
-        w_in = 128
-        w_out = 128
-        in_ch = 4
-        out_ch = 4
-        
         ret = []
         
         for it in range(n):
             batch = updater.get_iterator('test').next()
             batchsize = len(batch)
 
-            x_in = xp.zeros((batchsize, in_ch, w_in, w_in)).astype("f")
-            t_out = xp.zeros((batchsize, out_ch, w_out, w_out)).astype("f")
-
-            for i in range(batchsize):
-                x_in[i,:] = xp.asarray(batch[i][0])
-                t_out[i,:] = xp.asarray(batch[i][1])
-
-            x_in = Variable(x_in)
+            x_in = Variable(xp.asarray([b[0] for b in batch]).astype('f'))
+            t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
             x_out = converter(x_in)
-            
+    
             ret.append(chainer.cuda.to_cpu(x_in.data)[0,:])
-            ret.append(chainer.cuda.to_cpu(t_out)[0,:])
+            ret.append(chainer.cuda.to_cpu(t_out.data)[0,:])
             ret.append(chainer.cuda.to_cpu(x_out.data)[0,:])
         
         def save_image(x, name, mode=None):
@@ -63,8 +52,9 @@ def out_image_base(updater, xp, n, seed, dst, converter):
             img = Image.fromarray(x, mode=mode).convert('RGBA')
             img.save(preview_path)
             img.save(current_path)
-        
-        ret = [resize(x, (w_out, w_out), Image.NEAREST) for x in ret]
+        max_h = max(r.shape[1] for r in ret)
+        max_w = max(r.shape[2] for r in ret)
+        ret = [resize_contain(x, (max_h, max_w), x[:,0,0]) for x in ret]
         x = np.asarray(np.clip(np.asarray(ret) * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gen")
         
