@@ -128,37 +128,10 @@ class Decoder(chainer.Chain):
 class DownscaleDecoder(chainer.Chain):
     def __init__(self, out_ch):
         layers = {}
-        w = chainer.initializers.Normal(0.02)
-        layers['c0'] = CBR(512, 512, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c1'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c2'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c3'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c4'] = CBR(1024, 256, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c5'] = CBR(512, 128, bn=True, sample='none', activation=F.relu, dropout=False)
-        layers['c6'] = CBR(256, 64, bn=True, sample='none', activation=F.relu, dropout=False)
-        layers['c7'] = L.Convolution2D(128, out_ch, 3, 1, 1, initialW=w)
-        self.n_up_layers = 5
-        self.n_layers = len(layers)
-        super().__init__(**layers)
+        super().__init__(dec=Decoder(out_ch))
 
     def __call__(self, hs):
-        h = self.c0(hs[-1])
-        for i in range(1, self.n_up_layers):
-            h = F.concat([h, hs[-i-1]])
-            h = self['c%d'%i](h)
-        
-        i = self.n_up_layers
-        h = F.concat([h, hs[-i-1]])
-        h = self['c%d'%i](h)
-
-        i = self.n_up_layers + 1
-        h = F.concat([h, F.average_pooling_2d(hs[-i-1], 2, 2, 0)])
-        h = self['c%d'%i](h)
-
-        i = self.n_up_layers + 2
-        h = F.concat([h, F.average_pooling_2d(hs[-i-1], 4, 4, 0)])
-        h = self['c%d'%i](h)
-        return F.unpooling_2d(h, 4, 4, 0, cover_all=False)
+        return F.unpooling_2d(F.average_pooling_2d(self.dec(hs), 4, 4, 0), 4, 4, 0, cover_all=False)
 
 class Discriminator(chainer.Chain):
     def __init__(self, in_ch, out_ch):
