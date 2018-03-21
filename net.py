@@ -125,13 +125,49 @@ class Decoder(chainer.Chain):
                 h = self.c7(h)
         return h
 
+class DownscaleEncoder(chainer.Chain):
+    def __init__(self, in_ch):
+        layers = {}
+        w = chainer.initializers.Normal(0.02)
+        layers['c0'] = L.Convolution2D(in_ch, 64, 5, 1, 2, initialW=w)
+        layers['c1'] = CBR(64, 128, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
+        layers['c2'] = CBR(128, 256, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c3'] = CBR(256, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c4'] = CBR(512, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c5'] = CBR(512, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c6'] = CBR(512, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c7'] = CBR(512, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        super().__init__(**layers)
+
+    def __call__(self, x):
+        hs = [F.leaky_relu(self.c0(x))]
+        for i in range(1,8):
+            hs.append(self['c%d'%i](hs[i-1]))
+        return hs
+
 class DownscaleDecoder(chainer.Chain):
     def __init__(self, out_ch):
         layers = {}
-        super().__init__(dec=Decoder(out_ch))
+        w = chainer.initializers.Normal(0.02)
+        layers['c0'] = CBR(512, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
+        layers['c1'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
+        layers['c2'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=True)
+        layers['c3'] = CBR(1024, 512, bn=True, sample='up-nn', activation=F.relu, dropout=False)
+        layers['c4'] = CBR(1024, 256, bn=True, sample='up-nn', activation=F.relu, dropout=False)
+        layers['c5'] = CBR(512, 128, bn=True, sample='up-nn', activation=F.relu, dropout=False)
+        layers['c6'] = CBR(256, 64, bn=True, sample='none', activation=F.relu, dropout=False)
+        layers['c7'] = L.Convolution2D(128, out_ch, 5, 1, 2, initialW=w)
+        super().__init__(**layers)
 
     def __call__(self, hs):
-        return F.unpooling_2d(F.average_pooling_2d(self.dec(hs), 4, 4, 0), 4, 4, 0, cover_all=False)
+        h = self.c0(hs[-1])
+        for i in range(1,8):
+            h = F.concat([h, hs[-i-1]])
+            if i<7:
+                h = self['c%d'%i](h)
+            else:
+                h = self.c7(h)
+        return h
 
 class Discriminator(chainer.Chain):
     def __init__(self, in_ch, out_ch):

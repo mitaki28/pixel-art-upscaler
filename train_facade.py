@@ -13,6 +13,7 @@ from chainer import serializers
 
 from net import Discriminator
 from net import Encoder
+from net import DownscaleEncoder
 from net import Decoder
 from net import DownscaleDecoder
 from updater import FacadeUpdater
@@ -52,12 +53,13 @@ def main():
     print('')
 
     # Set up a neural network to train
-    enc = Encoder(in_ch=4)
     if args.downscale:
         print('# Downscale Learning Enabled')
+        enc = DownscaleEncoder(in_ch=4)
         dec = DownscaleDecoder(out_ch=4)
     else:
         print('# Downscale Learning Disabled')
+        enc = Encoder(in_ch=4)        
         dec = Decoder(out_ch=4)        
     dis = Discriminator(in_ch=4, out_ch=4)
     

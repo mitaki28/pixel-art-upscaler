@@ -56,7 +56,7 @@ class PairDataset(dataset_mixin.DatasetMixin):
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
         t = argument_image(t, self.charSize, self.fineSize)
-        t = resize(t, (128, 128), Image.NEAREST)
+        t = resize(t, (64, 64), Image.NEAREST)
         return t[:C_label], t[C_label:]
     
 class NNDownscaleDataset(dataset_mixin.DatasetMixin):
