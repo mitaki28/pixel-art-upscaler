@@ -38,7 +38,7 @@ def out_image_base(updater, xp, n, seed, dst, converter):
             ret.append(t_out)
             ret.append(x_out)
             _, h_out, w_out = x_out.shape
-            ret.append(resize(resize(x_out, (h_out // 2, w_out // 2), Image.BOX)), (h_out, w_out), Image.NEAREST) 
+            ret.append(resize(resize(x_out, (h_out // 2, w_out // 2), Image.BOX), (h_out, w_out), Image.NEAREST))
         
         def save_image(x, name, mode=None):
             _, C, H, W = x.shape
