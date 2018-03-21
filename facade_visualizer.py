@@ -15,7 +15,7 @@ def out_image_base(updater, xp, n, seed, dst, converter):
     def make_image(trainer):
         np.random.seed(seed)
 
-        n_pattern = 3
+        n_pattern = 4
         n_images = n * n_pattern
 
         rows = n
@@ -31,9 +31,13 @@ def out_image_base(updater, xp, n, seed, dst, converter):
             t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
             x_out = converter(x_in)
     
-            ret.append(chainer.cuda.to_cpu(x_in.data)[0,:])
-            ret.append(chainer.cuda.to_cpu(t_out.data)[0,:])
-            ret.append(chainer.cuda.to_cpu(x_out.data)[0,:])
+            x_in = chainer.cuda.to_cpu(x_in.data)[0,:]
+            t_out = chainer.cuda.to_cpu(t_out.data)[0,:]
+            x_out = chainer.cuda.to_cpu(x_out.data)[0,:]
+            ret.append(x_in)
+            ret.append(t_out)
+            ret.append(x_out)
+            ret.append(resize(x_out, (x_out.shape[1] // 2, x_out.shape[2] // 2), Image.BOX))
         
         def save_image(x, name, mode=None):
             _, C, H, W = x.shape
