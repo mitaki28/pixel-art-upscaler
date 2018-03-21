@@ -47,13 +47,12 @@ class CBR(chainer.Chain):
         w = chainer.initializers.Normal(0.02)
         if sample=='down':
             layers['c'] = L.Convolution2D(ch0, ch1, 4, 2, 1, initialW=w)
-        elif sample=='down-b':
-            layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
         elif sample=='up':
             layers['c'] = L.Deconvolution2D(ch0, ch1, 4, 2, 1, initialW=w)
             # layers['c'] = PixelShuffler(ch0, ch1, 2, initialW=w)
-        elif sample=='up-b':
-            layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
+        elif sample=='none':
+            layers['c'] = L.Convolution2D(ch0, ch1, 3, 1, 1, initialW=w)
+            # layers['c'] = PixelShuffler(ch0, ch1, 2, initialW=w)
         else:
             assert False, 'unknown sample {}'.format(sample)
         if bn:
@@ -123,15 +122,30 @@ class DownscaleDecoder(chainer.Chain):
         layers['c2'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=True)
         layers['c3'] = CBR(1024, 512, bn=True, sample='up', activation=F.relu, dropout=False)
         layers['c4'] = CBR(1024, 256, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c5'] = L.Convolution2D(512, out_ch, 3, 1, 1, initialW=w)
+        layers['c5'] = CBR(512, 128, bn=True, sample='none', activation=F.relu, dropout=False)
+        layers['c6'] = CBR(256, 64, bn=True, sample='none', activation=F.relu, dropout=False)
+        layers['c7'] = L.Convolution2D(128, out_ch, 3, 1, 1, initialW=w)
+        self.n_up_layers = 5
         self.n_layers = len(layers)
         super().__init__(**layers)
 
     def __call__(self, hs):
         h = self.c0(hs[-1])
-        for i in range(1, self.n_layers):
+        for i in range(1, self.n_up_layers):
             h = F.concat([h, hs[-i-1]])
             h = self['c%d'%i](h)
+        
+        i = self.n_up_layers
+        h = F.concat([h, hs[-i-1]])
+        h = self['c%d'%i](h)
+
+        i = self.n_up_layers + 1
+        h = F.concat([h, F.average_pooling_2d(hs[-i-1], 2, 2, 0)])
+        h = self['c%d'%i](h)
+
+        i = self.n_up_layers + 2
+        h = F.concat([h, F.average_pooling_2d(hs[-i-1], 4, 4, 0)])
+        h = self['c%d'%i](h)
         return F.unpooling_2d(h, 4, 4, 0, cover_all=False)
 
 class Discriminator(chainer.Chain):
