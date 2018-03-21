@@ -2,7 +2,10 @@
 
 # python train_facade.py -g 0 -i ./facade/base --out result_facade --snapshot_interval 10000
 
-from __future__ import print_function
+import matplotlib
+matplotlib.use('Agg')
+
+
 import argparse
 import os
 
