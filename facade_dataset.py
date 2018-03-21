@@ -13,7 +13,7 @@ from chainercv.utils import read_image
 def random_crop_by_2(img, C_label, pH, pW, fH, fW):
     y = np.random.randint(pH)
     x = np.random.randint(pW)
-    label, data = img[C_label:], img[C_label:]
+    label, data = img[C_label:], img[:C_label]
     label = label[:,y:y+fH,x:x+fW]
     y_data = (y // 2) * 2
     x_data = (x // 2) * 2
