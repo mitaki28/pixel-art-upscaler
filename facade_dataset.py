@@ -10,23 +10,27 @@ from chainercv.transforms import resize_contain
 from chainercv.transforms import resize
 from chainercv.utils import read_image
 
-def random_crop_by_2(img, pH, pW, fH, fW):
-    y = 2 * np.random.randint(pH // 2)
-    x = 2 * np.random.randint(pW // 2)
-    img = img[:,y:y+fH,x:x+fW]
-    return img
+def random_crop_by_2(img, C_label, pH, pW, fH, fW):
+    y = np.random.randint(pH)
+    x = np.random.randint(pW)
+    label, data = img[C_label:], img[C_label:]
+    label = label[:,y:y+fH,x:x+fW]
+    y_data = (y // 2) * 2
+    x_data = (x // 2) * 2
+    data = data[:,y_data:y_data+fH,x_data:x_data+fW]
+    return  np.concatenate([label, data], axis=0)
 
 def convert_image(img):
     return np.asarray(img.convert('RGBA')).astype("f").transpose((2, 0, 1)) / 127.5 - 1.0
 
-def argument_image(img, char_size, fine_size, is_crop_random=True, is_flip_random=True):
+def argument_image(img, C_label, char_size, fine_size, is_crop_random=True, is_flip_random=True):
     cW, cH = char_size
     fW, fH = fine_size
     pW, pH = ((fW - cW), (fH - cH))
     if is_crop_random:
         assert pW >= 0 and pW % 2 == 0 and pH >= 0 and pH % 2 == 0
         img = resize_contain(img, (fH + pH, fW + pW), img[:,0,0])
-        img = random_crop_by_2(img, pH, pW, fH, fW)
+        img = random_crop_by_2(img, C_label, pH, pW, fH, fW)
     else:
         img = resize_contain(img, (fH, fW), img[:,0,0])
     if is_flip_random:
@@ -61,7 +65,7 @@ class PairDataset(dataset_mixin.DatasetMixin):
             label = convert_image(f)
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
-        t = argument_image(t, self.charSize, self.fineSize)
+        t = argument_image(t, C_label, self.charSize, self.fineSize)
         t = resize(t, (64, 64), Image.NEAREST)
         return t[:C_label], t[C_label:]
     
