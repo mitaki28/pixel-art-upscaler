@@ -10,6 +10,8 @@ import chainer
 from chainer import training
 from chainer.training import extensions
 from chainer import serializers
+from chainerui.utils import save_args
+from chainerui.extensions import CommandsExtension
 
 from net import Discriminator
 from net import Encoder
@@ -46,6 +48,7 @@ def main():
     parser.add_argument('--downscale', action='store_true', default=False,
                         help='scale output image to half size or not')
     args = parser.parse_args()
+    save_args(args, args.out)
 
     print('GPU: {}'.format(args.gpu))
     print('# Minibatch-size: {}'.format(args.batchsize))
@@ -126,12 +129,17 @@ def main():
         dec, 'dec_iter_{.updater.iteration}.npz'), trigger=snapshot_interval)
     trainer.extend(extensions.snapshot_object(
         dis, 'dis_iter_{.updater.iteration}.npz'), trigger=snapshot_interval)
-    trainer.extend(extensions.LogReport(trigger=display_interval))
+    trainer.extend(extensions.LogReport(trigger=preview_interval))
+    trainer.extend(extensions.PlotReport(
+        ['enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',],
+        trigger=preview_interval,
+    ))
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
     trainer.extend(out_image(updater, enc, dec, 8, args.seed, args.out), trigger=preview_interval)
+    trainer.extend(CommandsExtension())
 
     if args.resume:
         # Resume from a snapshot
