@@ -56,11 +56,13 @@ def out_image_base(updater, xp, n, seed, dst, converter):
                 x = x.reshape((rows*H, cols*W, C))
 
             preview_dir = '{}/preview'.format(dst)
-            preview_path = preview_dir +\
-                '/image_{}_{:0>8}.png'.format(name, trainer.updater.iteration)
+            preview_path = preview_dir + '/image_{}_{:0>8}.png'.format(name, trainer.updater.iteration)
+            current_path = preview_dir + '/image_{}_cureent.png'.format(name)
             if not os.path.exists(preview_dir):
                 os.makedirs(preview_dir)
-            Image.fromarray(x, mode=mode).convert('RGBA').save(preview_path)
+            img = Image.fromarray(x, mode=mode).convert('RGBA')
+            img.save(preview_path)
+            img.save(current_path)
         
         ret = [resize(x, (w_out, w_out), Image.NEAREST) for x in ret]
         x = np.asarray(np.clip(np.asarray(ret) * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
