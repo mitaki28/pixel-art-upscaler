@@ -14,7 +14,7 @@ from chainer.training import extensions
 from chainer import serializers
 
 from net import Encoder
-from net import Decoder, DownscaleDecoder
+from net import Decoder
 
 from facade_visualizer import convert_image
 
@@ -27,7 +27,6 @@ def main():
     parser.add_argument('--input_dir', '-i')    
     parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--out', '-o', type=str, default='out/converted', help='path to output directory')
-    parser.add_argument('--downscale', action='store_true', default=False, help='scale output image to half size or not')
     parser.add_argument('--compare', action='store_true', default=False, help='scale output image to half size or not')
 
     parser.add_argument('--model_dir', help='path to model directory')
@@ -40,10 +39,7 @@ def main():
 
     # Set up a neural network to train
     enc = Encoder(in_ch=4)
-    if args.downscale:
-        dec = DownscaleDecoder(out_ch=4)
-    else:
-        dec = Decoder(out_ch=4)
+    dec = Decoder(out_ch=4)
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current

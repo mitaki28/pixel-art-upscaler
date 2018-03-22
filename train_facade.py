@@ -18,9 +18,7 @@ from chainerui.extensions import CommandsExtension
 
 from net import Discriminator
 from net import Encoder
-from net import DownscaleEncoder
 from net import Decoder
-from net import DownscaleDecoder
 from updater import FacadeUpdater
 
 from facade_dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
