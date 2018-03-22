@@ -90,7 +90,7 @@ def convert_image_base(img, xp, converter):
             x = x.reshape((H, W, C))
         return Image.fromarray(
             np.asarray(xp.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
-        ).resize((w_out, w_out), Image.BOX)
+        )
 
 
 def convert_image(img, enc, dec):

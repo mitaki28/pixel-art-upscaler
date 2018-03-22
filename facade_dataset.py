@@ -39,7 +39,7 @@ def argument_image(img, C_label, char_size, fine_size, is_crop_random=True, is_f
 
 
 # TODO padding, resize は全部 Dataset 側でやるようにしたい
-class PairDataset(dataset_mixin.DatasetMixin):
+class PairDownscaleDataset(dataset_mixin.DatasetMixin):
 
     def __init__(self, dataDir, labelDir, charSize=(48, 48), fineSize=(64, 64)):
         self.charSize = charSize
@@ -69,7 +69,7 @@ class PairDataset(dataset_mixin.DatasetMixin):
         t = resize(t, (64, 64), Image.NEAREST)
         return t[:C_label], t[C_label:]
     
-class NNDownscaleDataset(dataset_mixin.DatasetMixin):
+class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
     def __init__(self, labelDir):
         self.labelDir = Path(labelDir)
         self.filepaths = list(self.labelDir.glob("*.png"))
@@ -99,7 +99,7 @@ class NNDownscaleDataset(dataset_mixin.DatasetMixin):
         img = resize(img, (64, 64), Image.NEAREST)
         return label, img
 
-class NNDownscaleDatasetReverse(NNDownscaleDataset):
+class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
     def get_example(self, i):
         label, img = super().get_example(i)
         return img, label

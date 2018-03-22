@@ -23,7 +23,7 @@ from net import Decoder
 from net import DownscaleDecoder
 from updater import FacadeUpdater
 
-from facade_dataset import PairDataset, NNDownscaleDataset, NNDownscaleDatasetReverse
+from facade_dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
 from facade_visualizer import out_image
 
 def main():
@@ -49,7 +49,8 @@ def main():
     parser.add_argument('--preview_interval', type=int, default=100,
                         help='Interval of previewing generated image')
     parser.add_argument('--downscale', action='store_true', default=False,
-                        help='scale output image to half size or not')
+                        help='enable downscale learning',
+    )
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -58,15 +59,8 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    # Set up a neural network to train
-    if args.downscale:
-        print('# Downscale Learning Enabled')
-        enc = DownscaleEncoder(in_ch=4)
-        dec = DownscaleDecoder(out_ch=4)
-    else:
-        print('# Downscale Learning Disabled')
-        enc = DownscaleEncoder(in_ch=4)        
-        dec = DownscaleDecoder(out_ch=4)        
+    enc = Encoder(in_ch=4)        
+    dec = Decoder(out_ch=4)        
     dis = Discriminator(in_ch=4, out_ch=4)
     
     if args.gpu >= 0:
@@ -86,18 +80,20 @@ def main():
     opt_dis = make_optimizer(dis)
 
     if not args.downscale:
-        train_d = NNDownscaleDataset(
+        print('# upscale learning with automatically generated images')
+        train_d = AutoUpscaleDataset(
             "{}/main".format(args.dataset),
         )
-        test_d = NNDownscaleDataset(
+        test_d = AutoUpscaleDataset(
             "{}/test".format(args.dataset),        
         )
     else:
-        train_d = PairDataset(
+        print('# downscale learning')
+        train_d = PairDownscaleDataset(
             "{}/main/train".format(args.dataset),
             "{}/main/label".format(args.dataset),            
         )
-        test_d = NNDownscaleDatasetReverse(
+        test_d = AutoUpscaleDatasetReverse(
             "{}/test".format(args.dataset),        
         )
 
