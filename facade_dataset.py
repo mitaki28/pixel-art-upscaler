@@ -95,8 +95,8 @@ class NNDownscaleDataset(dataset_mixin.DatasetMixin):
         img = random_crop(img, (64, 64))
         img = random_flip(img, x_random=True)
 
-        label = resize(resize(img, (32, 32), Image.NEAREST), (128, 128), Image.NEAREST)
-        img = resize(img, (128, 128), Image.NEAREST)
+        label = resize(resize(img, (32, 32), Image.NEAREST), (64, 64), Image.NEAREST)
+        img = resize(img, (64, 64), Image.NEAREST)
         return label, img
 
 class NNDownscaleDatasetReverse(NNDownscaleDataset):

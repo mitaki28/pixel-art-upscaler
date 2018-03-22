@@ -67,13 +67,13 @@ def out_image_base(updater, xp, n, seed, dst, converter):
 
 def out_image(updater, enc, dec, n, seed, dst):
     def converter(x_in):
-        with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
-            return dec(enc(x_in))
+        #with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
+        return dec(enc(x_in))
     return out_image_base(updater, enc.xp, n, seed, dst, converter)
 
 def convert_image_base(img, xp, converter):
         batchsize = 1
-        w_in = 128
+        w_in = 64
         w_out = 64
 
         img = (xp.asarray(img.convert('RGBA').resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 127.5) / 127.5
