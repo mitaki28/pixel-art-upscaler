@@ -65,8 +65,8 @@ def main():
         dec = DownscaleDecoder(out_ch=4)
     else:
         print('# Downscale Learning Disabled')
-        enc = Encoder(in_ch=4)        
-        dec = Decoder(out_ch=4)        
+        enc = DownscaleEncoder(in_ch=4)        
+        dec = DownscaleDecoder(out_ch=4)        
     dis = Discriminator(in_ch=4, out_ch=4)
     
     if args.gpu >= 0:
