@@ -20,6 +20,23 @@ from visualizer import convert_image
 
 from pathlib import Path
 
+def transparent_background(img):
+    background_color = img.getpixel((0, 0))
+    for i in range(img.size[0]):
+        for j in range(img.size[1]):
+            if img.getpixel((i, j)) == background_color:
+                img.putpixel((i, j), (0, 0, 0, 0))
+    return img
+
+def pad_power_of_2(img, minimum_size=32):
+    W, H = img.size
+    s = minimum_size
+    while s < W or s < H:
+        s *= 2
+    ret = Image.new('RGBA', (s, s))
+    ret.paste(img, ((s - W) // 2, (s - H) // 2))
+    return ret
+
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
     parser.add_argument('images', help='path to input images', metavar='image', type=str, nargs='*',)
@@ -78,16 +95,28 @@ def main():
         single_path = single_dir/image_path.name
         compare_path = compare_dir/image_path.name
         with Image.open(image_path) as img:
+            oW, oH = img.size
             img = img.convert('RGBA')
-            W, H = img.size
-            converted_img = convert_image(img, enc, dec).convert('RGBA')
-            converted_img.save(single_path)
+            img = transparent_background(img)
+            img = pad_power_of_2(img)
+            preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
+            converted_img = convert_image(preprocessed_img, enc, dec).convert('RGBA')
+            
+            cW, cH = converted_img.size
+            pW, pH = (cW - oW * 2, cH - oH * 2)
+            postprocessed_img = converted_img.crop((
+                pW // 2,
+                pH // 2,
+                pW // 2 + oW * 2,
+                pH // 2 + oH * 2
+            ))
+            postprocessed_img.save(single_path)
             print(image_path, '->', single_path)
 
             if args.compare:
-                compare_img = Image.new('RGBA', (2 * W, H))
-                compare_img.paste(img, (0, 0))
-                compare_img.paste(converted_img, (W, 0))
+                compare_img = Image.new('RGBA', (2 * cW, cH))
+                compare_img.paste(preprocessed_img, (0, 0))
+                compare_img.paste(converted_img, (cW, 0))
                 compare_img.save(compare_path)
                 print(image_path, '->', compare_path)
         
