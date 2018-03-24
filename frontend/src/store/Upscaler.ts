@@ -8,8 +8,8 @@ import { Either, left, right } from "fp-ts/lib/Either";
 import { transparentBackgroundColor, adjustSizeToPowerOf2, imageToChwFloat32Array, chwFloat32ArrayToImage, imageToHwcFloat32Array, hwcFloat32ArrayToImage } from "../util/image";
 
 const MIN_SIZE = 32;
-const MAX_HEIGHT = 64;
-const MAX_WIDTH = 64;
+const MAX_HEIGHT = 32;
+const MAX_WIDTH = 32;
 
 export interface Upscaler extends Converter {
 
