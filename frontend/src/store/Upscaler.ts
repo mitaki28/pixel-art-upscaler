@@ -104,7 +104,7 @@ export class UpscalerLoader {
         this._state = {
             status: UpscalerLoadingState.LOADING,
         };
-        return WebDNN.load("/model/webdnn").then((runner) => {
+        return WebDNN.load("./model/webdnn").then((runner) => {
             const upscaler = new Upscaler(runner);
             this.finishLoading(upscaler);
             return upscaler;
