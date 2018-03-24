@@ -3,14 +3,19 @@ import { observable, computed, action } from "mobx";
 import { Converter, ConversionError } from "./Converter";
 import * as Jimp from "jimp";
 import * as WebDNN from "webdnn";
+import * as KerasJS from "keras-js";
 import SymbolicFloat32Array from "webdnn/symbolic_typed_array/symbolic_float32array";
 import { Either, left, right } from "fp-ts/lib/Either";
-import { transparentBackgroundColor, adjustSizeToPowerOf2, imageToChwFloat32Array, chwFloat32ArrayToImage } from "../util/image";
+import { transparentBackgroundColor, adjustSizeToPowerOf2, imageToChwFloat32Array, chwFloat32ArrayToImage, imageToHwcFloat32Array, hwcFloat32ArrayToImage } from "../util/image";
 
 const MAX_HEIGHT = 32;
 const MAX_WIDTH = 32;
 
-export class Upscaler implements Converter {
+export interface Upscaler extends Converter {
+
+}
+
+export class WebDNNUpscaler implements Upscaler {
 
     private _runner: WebDNN.DescriptorRunner;
     private _inputImage: SymbolicFloat32Array;
@@ -37,7 +42,10 @@ export class Upscaler implements Converter {
 
         transparentBackgroundColor(img);
         adjustSizeToPowerOf2(img);
-        img.resize(img.bitmap.width * 2, img.bitmap.height * 2, Jimp.RESIZE_NEAREST_NEIGHBOR);
+        img.resize(64, 64, Jimp.RESIZE_NEAREST_NEIGHBOR);
+        // modify nearest-neighbor alignment
+        img.contain(65, 65, Jimp.HORIZONTAL_ALIGN_RIGHT | Jimp.VERTICAL_ALIGN_BOTTOM);
+        img.crop(0, 0, 64, 64);        
 
         const x = imageToChwFloat32Array(img, 4).map((v) => {
             return v / 127.5 - 1.0;
@@ -51,6 +59,8 @@ export class Upscaler implements Converter {
         }
         const y = this._outputImage.toActual().map((v) => Math.min(Math.max((v + 1.0) * 127.5, 0.0), 255.0));
         const convertedImage = chwFloat32ArrayToImage(y, 4, img.bitmap.width, img.bitmap.height);
+        convertedImage.resize(64, 64, Jimp.RESIZE_NEAREST_NEIGHBOR);
+
         return new Promise<Either<ConversionError, string>>((resolve, reject) => {
             (convertedImage as any).getBase64(Jimp.MIME_PNG, (error: any, dst: string) => {
                 if (error) {
@@ -81,8 +91,7 @@ export type UpscalerLoadingState =
         error: Error;
     }
 
-
-export class UpscalerLoader {
+export abstract class UpscalerLoader {
 
     @observable private _state: UpscalerLoadingState;
     private _upscaler: null | Promise<Upscaler>;
@@ -104,15 +113,16 @@ export class UpscalerLoader {
         this._state = {
             status: UpscalerLoadingState.LOADING,
         };
-        return WebDNN.load("./model/webdnn").then((runner) => {
-            const upscaler = new Upscaler(runner);
+        return this.load().then((upscaler) => {
             this.finishLoading(upscaler);
             return upscaler;
-        }).catch((e) => {
+        }).catch((e: any) => {
             this.failLoading(e);
             throw e;
         });
     }
+
+    protected abstract load(): Promise<Upscaler>;
 
     @action.bound
     private finishLoading(value: Upscaler) {
@@ -137,5 +147,87 @@ export class UpscalerLoader {
             return this._upscaler;
         }
         return this._upscaler = this.startLoading();
+    }
+}
+
+
+export class WebDNNUpscalerLoader extends UpscalerLoader {
+    constructor() {
+        super();
+    }
+    @action.bound
+    protected load(): Promise<Upscaler> {
+        return WebDNN.load("./model/webdnn").then((runner) => {
+            return new WebDNNUpscaler(runner);
+        })
+    }
+}
+
+
+export class KerasUpscaler implements Upscaler {
+
+    private _model: any;
+
+    constructor(model: any) {
+        this._model = model;
+    }
+
+    @action.bound
+    async convert(src: string): Promise<Either<ConversionError, string>> {
+        let img: Jimp.Jimp;
+        try {
+            img = await Jimp.read(src);
+        } catch (e) {
+            return left(ConversionError.failedToLoad(e));
+        }
+
+        if (img.bitmap.height > MAX_HEIGHT || img.bitmap.width > MAX_WIDTH) {
+            return left(ConversionError.tooLarge({ width: MAX_WIDTH, height: MAX_HEIGHT }))
+        }
+
+        transparentBackgroundColor(img);
+        adjustSizeToPowerOf2(img);
+        img.resize(64, 64, Jimp.RESIZE_NEAREST_NEIGHBOR);
+        // modify nearest-neighbor alignment
+        img.contain(65, 65, Jimp.HORIZONTAL_ALIGN_RIGHT | Jimp.VERTICAL_ALIGN_BOTTOM);
+        img.crop(0, 0, 64, 64);
+        const x = imageToHwcFloat32Array(img, 4).map((v) => {
+            return v / 127.5 - 1.0;
+        });
+
+        let y: Float32Array;
+        try {
+            y = (await this._model.predict({"input_1": x})).conv2d_16;
+        } catch (e) {
+            return left(ConversionError.failedToConvert(e));
+        }
+        const convertedImage = hwcFloat32ArrayToImage(
+            y.map((v) => Math.min(Math.max(v * 127.5 + 127.5, 0.0), 255.0)),
+            4,
+            img.bitmap.width,
+            img.bitmap.height,
+        );
+        // convertedImage.resize(64, 64, Jimp.RESIZE_NEAREST_NEIGHBOR);
+        return new Promise<Either<ConversionError, string>>((resolve, reject) => {
+            (convertedImage as any).getBase64(Jimp.MIME_PNG, (error: any, dst: string) => {
+                if (error) {
+                    reject(error);
+                }
+                resolve(right<ConversionError, string>(dst));
+            });
+        });
+    }
+}
+
+export class KerasUpscalerLoader extends UpscalerLoader {
+    @action.bound
+    protected load(): Promise<Upscaler> {
+        const model = new KerasJS.Model({
+            filepath: './model/keras/model.bin',
+            gpu: true,
+        });
+        return model.ready().then(() => {
+            return new KerasUpscaler(model);
+        });
     }
 }

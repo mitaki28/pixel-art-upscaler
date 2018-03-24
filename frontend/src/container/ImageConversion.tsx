@@ -39,7 +39,7 @@ export class ImageConversionContainer extends React.Component<{ store: ImageConv
             case ConversionError.FAILED_TO_LOAD:
                 return <div>ファイルの読み込みに失敗しました: {error.error.message}</div>;
             case ConversionError.FAILED_TO_CONVERT:
-                return <div>ファイルの変換に失敗しました</div>;
+                return <div>ファイルの変換に失敗しました: {error.error.message}</div>;
             case ConversionError.TOO_LARGE_RESOLUTION:
                 return <div>解像度は32x32以下で入力してください</div>;
         }

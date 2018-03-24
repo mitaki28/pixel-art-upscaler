@@ -10,7 +10,7 @@ from webdnn.frontend.chainer import ChainerConverter
 from webdnn.backend import generate_descriptor
 
 
-def export_to_webdnn(model_dir, iteration, in_ch=4, out_ch=4, output_dir=Path(__file__).parent/'frontend'/'public'/'model'/'webdnn'):
+def export(model_dir, iteration, in_ch=4, out_ch=4, output_dir=Path(__file__).parent/'frontend'/'public'/'model'/'webdnn'):
     model_dir = Path(model_dir)
     output_dir = Path(output_dir)
     enc = net.Encoder(in_ch)
@@ -18,10 +18,18 @@ def export_to_webdnn(model_dir, iteration, in_ch=4, out_ch=4, output_dir=Path(__
     chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(iteration), enc)
     chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(iteration), dec)
 
-    # add-hook fix for broken batch normalization
-    if np.isnan(enc.c7.batchnorm.avg_var[-1]):
-        print(enc.c7.batchnorm.avg_var)
-        enc.c7.batchnorm.avg_var = np.zeros(enc.c7.batchnorm.avg_var.shape, enc.c7.batchnorm.avg_var.dtype)
+    # hack: add-hook fix for broken batch normalization
+    for i in range(1, 8):
+        cbr = enc['c{}'.format(i)]
+        if np.isnan(cbr.batchnorm.avg_var[-1]):
+            print('enc.c{} is broken'.format(i))
+            cbr.batchnorm.avg_var = np.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
+    for i in range(0, 7):
+        cbr = dec['c{}'.format(i)]
+        if np.isnan(cbr.batchnorm.avg_var[-1]):
+            print('dec.c{} is broken'.format(i))
+            cbr.batchnorm.avg_var = np.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
+
 
     x_in = chainer.Variable(np.zeros((1, in_ch, 64, 64), dtype=np.float32))
     x_out = dec(enc(x_in))

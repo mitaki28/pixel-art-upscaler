@@ -33,5 +33,8 @@ module.exports = {
       hash: true,
       template: path.join(__dirname, "src/index.html"),
     })
-  ]
+  ],
+  node: {
+    fs: 'empty'
+  }
 };
