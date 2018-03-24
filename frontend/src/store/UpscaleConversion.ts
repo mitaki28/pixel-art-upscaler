@@ -2,6 +2,7 @@
 import { observable, computed, action } from "mobx";
 import { Converter, ConversionError } from "./Converter";
 import { generateRandomString } from "../util/random";
+import * as Jimp from "jimp";
 
 export namespace UpscaleConversionState {
     export const LOADING = Symbol("LOADING");
@@ -60,6 +61,7 @@ export class UpscaleConversion {
     @observable _state: ImageConversionState;
     @observable private _inputFile: File;
     @observable inputImage: string | null = null;
+    @observable inputImage2x: string | null = null;
     @observable convertedImage: string | null = null;
     
 
@@ -82,13 +84,16 @@ export class UpscaleConversion {
 
 
     @action.bound
-    start() {
-        this.loadInputImage().then((image) => {
-            this.finishLoad(image);
-            return this.startConversion(image);
-        }).catch((e) => {
+    async start() {
+        try {
+            const img = await this.loadInputImage();
+            const img2x = await this.scaleInputImageByNearestNeighbor(img);
+            this.finishLoad(img, img2x);
+            return this.startConversion(img);
+        } catch (e) {
             this.failLoad(e);
-        });
+            return;
+        }
     }    
 
     @action.bound
@@ -106,6 +111,21 @@ export class UpscaleConversion {
     }
 
     @action.bound
+    private async scaleInputImageByNearestNeighbor(src: string): Promise<string> {
+        let img: Jimp.Jimp;
+        img = await Jimp.read(src);
+        img.resize(img.bitmap.width * 2, img.bitmap.height * 2, Jimp.RESIZE_NEAREST_NEIGHBOR);
+        return  new Promise<string>((resolve, reject) => {
+            (img as any).getBase64(Jimp.MIME_PNG, (error: any, dst: string) => {
+                if (error) {
+                    reject(error);
+                }
+                resolve(dst);
+            });
+        });
+    }
+
+    @action.bound
     private failLoad(error: Error) {
         this._state = {
             status: UpscaleConversionState.LOAD_FAILURE,
@@ -114,11 +134,20 @@ export class UpscaleConversion {
     }
 
     @action.bound
-    private finishLoad(inputImage: string) {
+    private finishLoad(inputImage: string, inputImage2x: string) {
         this._state = {
             status: UpscaleConversionState.CONVERTING,
         }
         this.inputImage = inputImage;
+        this.inputImage2x = inputImage2x;
+    }
+
+    @action.bound
+    private finishScalingByNearestNeighbor(inputImage2x: string) {
+        this._state = {
+            status: UpscaleConversionState.CONVERTING,
+        }
+        this.inputImage2x = inputImage2x;
     }
 
     @action.bound

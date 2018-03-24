@@ -23,6 +23,21 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
         }
     }
 
+    renderInputImage2x(): JSX.Element {
+        switch (this.props.store.state.status) {
+            case UpscaleConversionState.LOADING:
+                return <Loading />
+            case UpscaleConversionState.LOAD_FAILURE:
+                return <div>ファイルの読み込みに失敗しました: {this.props.store.state.error.message}</div>
+            case UpscaleConversionState.CONVERTING:
+            case UpscaleConversionState.CONVERTED:
+            case UpscaleConversionState.CONVERTION_FAILURE:
+                return <img
+                    src={this.props.store.inputImage2x!}
+                />;
+        }
+    }
+
     renderConvertedImage() {
         switch (this.props.store.state.status) {
             case UpscaleConversionState.LOADING:
@@ -61,6 +76,14 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
                             <Panel.Heading>元画像</Panel.Heading>
                             <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white"}}>
                                 {this.renderInputImage()}
+                            </Panel.Body>
+                        </Panel>
+                    </Col>
+                    <Col md={4}>
+                        <Panel style={{ width: "100%", textAlign: "center" }}>
+                            <Panel.Heading>元画像(x2)</Panel.Heading>
+                            <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
+                                {this.renderInputImage2x()}
                             </Panel.Body>
                         </Panel>
                     </Col>
