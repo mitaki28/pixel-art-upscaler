@@ -178,7 +178,7 @@ export class ImageConversionList {
             converter,
             this,
         );
-        this._conversions.push(conversion);
+        this._conversions.unshift(conversion);
         conversion.start();
         return conversion;
     }

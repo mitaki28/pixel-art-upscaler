@@ -20,8 +20,8 @@ export class App {
         return this._uploadKey;
     }
     @computed
-    get isLoading() {
-        return this.upscalerLoader.state.status === UpscalerLoadingState.LOADING;
+    get canStartUpscale() {
+        return !(this.upscalerLoader.state.status === UpscalerLoadingState.LOADING)
     }
     @action.bound
     updateUploadKey() {
