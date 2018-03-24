@@ -16,6 +16,20 @@
 
 [こちら](https://razor-edge.work/material/fsmchcv/)で配布されている First Seed Material 様の素材（高解像度版）約7000枚を用いて学習しています。</p>
 
+### 環境構築
+* Python 3.5 が必要です
+
+```
+python3 -m venv venv
+source venv/bin/activate
+pip -r requirements.txt
+```
+
+* GPU を利用する場合は手動で cupy を追加インストールしてください
+```
+pip install cupy
+```
+
 ### 既存の実装+alpha
 いろいろ変えてみましたが、実際のところ、 [chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix) そのままで、128x128 にアップスケールして学習してもそこまで結果は変わってないですが、感覚的にこちらのほうが安定しているような感じはしました。（もともとの chainer-pix2pix を使ったときは Generator が Discriminator に振り回されて l1-loss の収束率が悪い感じがしました。）
 
@@ -28,6 +42,16 @@
     * もとのネットワークでは画像サイズが128x128以上ないと、画像幅が足りずエラーになります
     * そこで、最上段を5x5のConvolution2D(縮小なし)に換装しました
     * 3x3 ではなく5x5 なのは [既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms) が5x5のconvolutionをベースとしていたことや、より広い範囲を見たほうが、そのドットのコンテキストを推論しやすいだろうという予想のもとです
+* もとの画像を以下の手順で処理して学習しています
+    * 点(0, 0) の色を透明色とみなし、該当する色を(0, 0, 0, 0)に変更します
+    * 80x80 になるように均等に padding を入れます
+    * 画像を平行移動（64x64のcrop）と鏡像反転して、データを水増しします
+        * 平行移動はおそらく重要です
+            * nearest neighbor 縮小は性質上、1枚の画像に対して、4種類の結果が存在します（縮小時に4x4格子のどの点を取るかの自由度があるため）
+                * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/nn-scales.png?raw=true">
+            * 画像をランダムに平行移動することによって、この4種類の結果をすべて学習データセットに加えることができ、実質的に画像を4倍に水増しできます
+            * さらに、目などの細かいピクセルの模様も nearest neighbor 縮小のいずれかのパターンではきれいに残っていること多いので、学習を繰り返すことで、適切な復元方法にたどり着ける可能性が上がります
+    * nearest neighbor 法(PIL.Image.NEAREST_NEIGHBOR によるリサイズ)で縮小し、再度64x64に nearest_neighbor 法で拡大したものを変換元、もとの画像を変換先として学習します
 
 #### その他
 * batchsize はマシンスペックに余裕があっても敢えて1にすべきです(効果あり; batchsize=4のときと比較して l1-loss の収束に0.5(lam1=100 のとき)程度の差がありました)
