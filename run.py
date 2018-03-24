@@ -16,7 +16,7 @@ from chainer import serializers
 from net import Encoder
 from net import Decoder
 
-from facade_visualizer import convert_image
+from visualizer import convert_image
 
 from pathlib import Path
 

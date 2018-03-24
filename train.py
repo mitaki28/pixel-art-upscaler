@@ -21,8 +21,8 @@ from net import Encoder
 from net import Decoder
 from updater import FacadeUpdater
 
-from facade_dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
-from facade_visualizer import out_image
+from dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
+from visualizer import out_image
 
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
