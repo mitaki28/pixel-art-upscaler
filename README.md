@@ -1,25 +1,15 @@
-# chainer-pix2pix
-chainer implementation of pix2pix
-https://phillipi.github.io/pix2pix/
+＃ Pixel-Art Upscaler(仮)
 
-The Japanese readme can be found [here](README-ja.md).
+このコードは[chaienr-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)をベースにして作成されています。
 
-# Example result on CMP facade dataset
-<img src="https://github.com/mattya/chainer-pix2pix/blob/master/image/example.png?raw=true">
-From the left side: input, output, ground_truth
+![ドット絵の超解像]("https://raw.github.com/mitaki28/pixel-art-upscaler/image/example.png")
 
+(変換元素材: [白螺子屋](http://hi79.web.fc2.com/)様, 学習データ: [First Seed Material](https://razor-edge.work/material/fsmchcv/) 様【閉鎖されてしまったので、代理配布先】）)
 
-# usage
-1. `pip install -r requirements.txt`
-2. Download the facade dataset (base set) http://cmp.felk.cvut.cz/~tylecr1/facade/
-3. `python train_facade.py -g [GPU ID, e.g. 0] -i [dataset root directory] --out [output directory] --snapshot_interval 10000`
-4. Wait a few hours...
- - `--out` stores snapshots of the model and example images at an interval defined by `--snapshot_interval`
- - If the model size is large, you can reduce `--snapshot_interval` to save resources.
+32x32〜16x16程度のキャラチップを前提としたドット絵の拡大ツールです。
 
-# Using other datasets
-- Gather image pairs (e.g. label + photo). Several hundred pairs are required for good results.
-- Create a copy of `facade_dataset.py` for your dataset. The function get_example should be written so that it returns the i-th image pair a tuple of numpy arrays i.e. `(input, output)`.
-- It maybe necessary to update the loss function in `updater.py`.
-- Likewise, make a copy of `facade_visualizer.py` and modify to visualize the dataset.
-- In `train_facade.py` change `in_ch` and `out_ch` to the correct input and output channels for your data.
+(既存の手法)[https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms]よりもリアルな拡大が可能ですが、画像が歪んだり不自然な拡大がされることも結構あり、まだ実験段階です。
+
+いわゆるディープラーニングと呼ばれる技術を用いて実装されており、[pix2pix](https://arxiv.org/abs/1611.07004) というネットワーク構造をベースにしています。実装は[chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)を改造して制作しました。
+
+[こちら](https://razor-edge.work/material/fsmchcv/)で配布されている First Seed Material 様の素材（高解像度版）約7000枚を用いて学習しています。</p>
