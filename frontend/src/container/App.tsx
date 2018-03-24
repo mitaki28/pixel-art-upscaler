@@ -21,7 +21,7 @@ export class AppContainer extends React.Component<{ store: App }> {
             case UpscalerLoadingState.LOADING:
                 return <div>モデルをロード中・・・</div>;
             case UpscalerLoadingState.LOAD_FAILURE:
-                return <div>モデルのロードに失敗しましたthis.props.store.upscalerLoader.state.error.messa</div>
+                return <div>モデルのロードに失敗しました: {this.props.store.upscalerLoader.state.error.message}</div>
             default:
                 return <div />
         }

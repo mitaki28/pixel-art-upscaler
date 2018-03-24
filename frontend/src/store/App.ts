@@ -1,8 +1,7 @@
 import { UpscalerLoader, UpscalerLoadingState } from "../store/Upscaler";
 import { ImageConversionList } from "./ImageConversion";
 import { action, computed, observable } from "mobx";
-
-export const generateUploadKey = () => Math.random().toFixed(32).toString();
+import { generateRandomString } from "../util/random";
 
 export class App {
 
@@ -13,7 +12,7 @@ export class App {
     constructor() {
         this.upscalerLoader = new UpscalerLoader();
         this.imageConversionList = new ImageConversionList();
-        this._uploadKey = generateUploadKey();
+        this._uploadKey = generateRandomString();
     }
 
     @computed
@@ -26,7 +25,7 @@ export class App {
     }
     @action.bound
     updateUploadKey() {
-        this._uploadKey = generateUploadKey();
+        this._uploadKey = generateRandomString();
     }
     @action.bound
     async upscale(file: File) {

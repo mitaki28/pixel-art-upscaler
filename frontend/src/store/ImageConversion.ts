@@ -1,6 +1,7 @@
 
 import { observable, computed, action } from "mobx";
 import { Converter, ConversionError } from "./Converter";
+import { generateRandomString } from "../util/random";
 
 export namespace ImageConversionState {
     export const LOADING = Symbol("LOADING");
@@ -63,6 +64,7 @@ export class ImageConversion {
     
 
     constructor(
+        public readonly id: string,
         inputFile: File,
         private readonly converter: Converter,
         private readonly imageConversionList: ImageConversionList,
@@ -171,6 +173,7 @@ export class ImageConversionList {
     @action.bound
     startConversion(inputFile: File, converter: Converter): ImageConversion {
         const conversion = new ImageConversion(
+            generateRandomString(),
             inputFile,
             converter,
             this,

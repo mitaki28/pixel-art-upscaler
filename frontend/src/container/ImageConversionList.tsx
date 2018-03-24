@@ -8,11 +8,13 @@ export class ImageConversionListContainer extends React.Component<{ store: Image
     render() {
         return (
             <table>
-                {
-                    this.props.store.conversions.map((conversion) => 
-                        <ImageConversionContainer store={conversion} />
-                    )
-                }
+                <tbody>
+                    {
+                        this.props.store.conversions.map((conversion, i) => 
+                            <ImageConversionContainer key={i} store={conversion} />
+                        )
+                    }
+                </tbody>
             </table>
         );
     }
