@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const LicenseWebpackPlugin = require('license-webpack-plugin').LicenseWebpackPlugin;
 
 module.exports = {
   mode: "development",
@@ -39,7 +40,10 @@ module.exports = {
     new HtmlWebpackPlugin({
       hash: true,
       template: path.join(__dirname, "src/index.html"),
-    })
+    }),
+    new LicenseWebpackPlugin({
+      pattern: /.*/,
+    }),
   ],
   node: {
     fs: 'empty'
