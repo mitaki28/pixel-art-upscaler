@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const LicenseWebpackPlugin = require('license-webpack-plugin').LicenseWebpackPlugin;
+const webpack = require('webpack');
 
 module.exports = {
   mode: "development",
@@ -44,6 +45,10 @@ module.exports = {
     new LicenseWebpackPlugin({
       pattern: /.*/,
     }),
+    new webpack.DefinePlugin({
+      "NODE_ENV": process.env.NODE_ENV,
+      "process.env.NODE_ENV": `'${process.env.NODE_ENV}'`
+    })
   ],
   node: {
     fs: 'empty'

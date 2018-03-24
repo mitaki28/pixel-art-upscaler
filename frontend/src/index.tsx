@@ -10,6 +10,6 @@ const store = new App();
 ReactDOM.render(
     <div>
         <AppContainer store={store} />
-        <MobXDevTools />
+        {process.env.NODE_ENV === "development" && <MobXDevTools />}
     </div>
 , document.getElementById("app"));
