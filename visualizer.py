@@ -72,10 +72,7 @@ def out_image(updater, enc, dec, n, seed, dst):
 
 def convert_image_base(img, xp, converter):
         batchsize = 1
-        w_in = 64
-        w_out = 64
-
-        img = (xp.asarray(img.convert('RGBA').resize((w_in, w_in), Image.NEAREST)).astype("f").transpose((2, 0, 1)) - 127.5) / 127.5
+        img = (xp.asarray(img).astype("f").transpose((2, 0, 1)) - 127.5) / 127.5
 
         x_in = Variable(img.reshape(1, *img.shape))
         x_out = converter(x_in)
