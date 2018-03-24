@@ -1,8 +1,8 @@
 import * as React from "react";
 import { observer } from "mobx-react"
 import { App } from "../store/App";
-import { ImageConversionList } from "../store/ImageConversion";
-import { ImageConversionListContainer } from "./ImageConversionList";
+import { UpscaleConversionList } from "../store/UpscaleConversion";
+import { UpscaleConversionListContainer } from "./UpscaleConversionList";
 import { UpscalerLoadingState } from "../store/Upscaler";
 import { Navbar, Nav, NavItem, Jumbotron, FormControl, Modal, ProgressBar } from "react-bootstrap";
 
@@ -20,7 +20,12 @@ export class AppContainer extends React.Component<{ store: App }> {
     renderUpscalerLoadingStatus() {
         switch (this.props.store.upscalerLoader.state.status) {
             case UpscalerLoadingState.LOADING:
-                return <div>モデルをロード中・・・</div>;
+                return (
+                    <div>
+                        <p style={{textAlign: "center"}}>【初回のみ】モデルのロード中・・・</p>
+                        <ProgressBar active now={100} />
+                    </div>
+                );
             case UpscalerLoadingState.LOAD_FAILURE:
                 return <div>モデルのロードに失敗しました: {this.props.store.upscalerLoader.state.error.message}</div>
             default:
@@ -31,14 +36,14 @@ export class AppContainer extends React.Component<{ store: App }> {
     render() {
         return (
             <div className="container" style={{height: "100%"}}>
-                {this.props.store.upscalerLoader.state.status === UpscalerLoadingState.LOADING &&
-                    <Modal container={this} show={this.props.store.upscalerLoader.state.status === UpscalerLoadingState.LOADING} onHide={() => undefined}>
-                        <Modal.Body>
-                            <p style={{textAlign: "center"}}>【初回のみ】モデルのロード中・・・</p>
-                            <ProgressBar active now={100} />
-                        </Modal.Body>
-                    </Modal>
-                }
+                <Modal container={this} show={
+                    this.props.store.upscalerLoader.state.status === UpscalerLoadingState.LOADING
+                        || this.props.store.upscalerLoader.state.status === UpscalerLoadingState.LOAD_FAILURE
+                    } onHide={() => undefined}>
+                    <Modal.Body>
+                        {this.renderUpscalerLoadingStatus()}
+                    </Modal.Body>
+                </Modal>
                 <Navbar>
                     <Navbar.Header>
                         <Navbar.Brand>
@@ -66,7 +71,7 @@ export class AppContainer extends React.Component<{ store: App }> {
                     </div>
                 </Jumbotron>
                 <div>
-                    <ImageConversionListContainer store={this.props.store.imageConversionList} />
+                    <UpscaleConversionListContainer store={this.props.store.imageConversionList} />
                 </div>
             </div>
         );

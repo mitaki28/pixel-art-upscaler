@@ -3,10 +3,10 @@ import { observable, computed, action } from "mobx";
 import { Converter, ConversionError } from "./Converter";
 import { generateRandomString } from "../util/random";
 
-export namespace ImageConversionState {
+export namespace UpscaleConversionState {
     export const LOADING = Symbol("LOADING");
     export type Loading = {
-        status: typeof ImageConversionState.LOADING;
+        status: typeof UpscaleConversionState.LOADING;
     };
     export const loading = (): Loading => ({
         status: LOADING,
@@ -14,7 +14,7 @@ export namespace ImageConversionState {
 
     export const LOAD_FAILURE = Symbol("LOAD_FAILURE");
     export type LoadFailure = {
-        status: typeof ImageConversionState.LOAD_FAILURE;
+        status: typeof UpscaleConversionState.LOAD_FAILURE;
         error: Error;
     };
     export const loadFailure = (error: Error): LoadFailure => ({
@@ -24,7 +24,7 @@ export namespace ImageConversionState {
 
     export const CONVERTING = Symbol("CONVERTING");
     export type Converting = {
-        status: typeof ImageConversionState.CONVERTING;
+        status: typeof UpscaleConversionState.CONVERTING;
     };
     export const converting = (): Converting => ({
         status: CONVERTING,
@@ -32,7 +32,7 @@ export namespace ImageConversionState {
 
     export const CONVERTED = Symbol("CONVERTED");
     export type Converted = {
-        status: typeof ImageConversionState.CONVERTED;
+        status: typeof UpscaleConversionState.CONVERTED;
     };
     export const converted = (value: string): Converted => ({
         status: CONVERTED,
@@ -40,23 +40,23 @@ export namespace ImageConversionState {
 
     export const CONVERTION_FAILURE = Symbol("CONVERTION_FAILURE");
     export type ConversionFailure = {
-        status: typeof ImageConversionState.CONVERTION_FAILURE;
+        status: typeof UpscaleConversionState.CONVERTION_FAILURE;
         error: ConversionError;
     }
-    export const conversionFailure = (error: ConversionError) =>({
-        status: typeof ImageConversionState.CONVERTION_FAILURE,
+    export const conversionFailure = (error: ConversionError): ConversionFailure =>({
+        status: UpscaleConversionState.CONVERTION_FAILURE,
         error,
     });
 }
 
 export type ImageConversionState = 
-    ImageConversionState.Loading
-    | ImageConversionState.LoadFailure
-    | ImageConversionState.Converting
-    | ImageConversionState.Converted
-    | ImageConversionState.ConversionFailure;
+    UpscaleConversionState.Loading
+    | UpscaleConversionState.LoadFailure
+    | UpscaleConversionState.Converting
+    | UpscaleConversionState.Converted
+    | UpscaleConversionState.ConversionFailure;
 
-export class ImageConversion {
+export class UpscaleConversion {
     @observable _state: ImageConversionState;
     @observable private _inputFile: File;
     @observable inputImage: string | null = null;
@@ -67,11 +67,11 @@ export class ImageConversion {
         public readonly id: string,
         inputFile: File,
         private readonly converter: Converter,
-        private readonly imageConversionList: ImageConversionList,
+        private readonly imageConversionList: UpscaleConversionList,
     ) {
         this._inputFile = inputFile;
         this._state = {
-            status: ImageConversionState.LOADING,
+            status: UpscaleConversionState.LOADING,
         }
     }
 
@@ -108,7 +108,7 @@ export class ImageConversion {
     @action.bound
     private failLoad(error: Error) {
         this._state = {
-            status: ImageConversionState.LOAD_FAILURE,
+            status: UpscaleConversionState.LOAD_FAILURE,
             error,
         }
     }
@@ -116,7 +116,7 @@ export class ImageConversion {
     @action.bound
     private finishLoad(inputImage: string) {
         this._state = {
-            status: ImageConversionState.CONVERTING,
+            status: UpscaleConversionState.CONVERTING,
         }
         this.inputImage = inputImage;
     }
@@ -135,7 +135,7 @@ export class ImageConversion {
     @action.bound
     private failConversion(error: ConversionError) {
         this._state = {
-            status: ImageConversionState.CONVERTION_FAILURE,
+            status: UpscaleConversionState.CONVERTION_FAILURE,
             error,
         }
     }
@@ -143,14 +143,14 @@ export class ImageConversion {
     @action.bound
     private finishConversion(convertedImage: string) {
         this._state = {
-            status: ImageConversionState.CONVERTED,
+            status: UpscaleConversionState.CONVERTED,
         }
         this.convertedImage = convertedImage;
     }
 
     @computed
     get canClose() {
-        return this.state.status === ImageConversionState.CONVERTING;
+        return this.state.status === UpscaleConversionState.CONVERTING;
     }
 
     @action.bound
@@ -159,8 +159,8 @@ export class ImageConversion {
     }
 }
 
-export class ImageConversionList {
-    @observable private _conversions: ImageConversion[]
+export class UpscaleConversionList {
+    @observable private _conversions: UpscaleConversion[]
     constructor() {
         this._conversions = [];
     }
@@ -171,8 +171,8 @@ export class ImageConversionList {
     }
 
     @action.bound
-    startConversion(inputFile: File, converter: Converter): ImageConversion {
-        const conversion = new ImageConversion(
+    startConversion(inputFile: File, converter: Converter): UpscaleConversion {
+        const conversion = new UpscaleConversion(
             generateRandomString(),
             inputFile,
             converter,
@@ -184,7 +184,7 @@ export class ImageConversionList {
     }
 
     @action.bound
-    closeConversion(conversion: ImageConversion) {
+    closeConversion(conversion: UpscaleConversion) {
         if (this._conversions.indexOf(conversion) === -1) {
             return;
         }

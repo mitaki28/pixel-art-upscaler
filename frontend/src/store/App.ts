@@ -1,17 +1,17 @@
 import { UpscalerLoader, UpscalerLoadingState, WebDNNUpscalerLoader } from "../store/Upscaler";
-import { ImageConversionList } from "./ImageConversion";
+import { UpscaleConversionList } from "./UpscaleConversion";
 import { action, computed, observable } from "mobx";
 import { generateRandomString } from "../util/random";
 
 export class App {
 
     @observable upscalerLoader: UpscalerLoader;
-    @observable imageConversionList: ImageConversionList;
+    @observable imageConversionList: UpscaleConversionList;
     @observable private _uploadKey: string;
 
     constructor() {
         this.upscalerLoader = new WebDNNUpscalerLoader();
-        this.imageConversionList = new ImageConversionList();
+        this.imageConversionList = new UpscaleConversionList();
         this._uploadKey = generateRandomString();
     }
 
