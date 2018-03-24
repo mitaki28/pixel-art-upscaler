@@ -82,6 +82,11 @@ export class UpscaleConversion {
         return this._state;
     }
 
+    @computed
+    get isConverting() {
+        return this._state.status === UpscaleConversionState.CONVERTING;
+    }
+
 
     @action.bound
     async start() {
@@ -197,6 +202,11 @@ export class UpscaleConversionList {
     @computed
     get conversions() {
         return this._conversions;
+    }
+
+    @computed
+    get isConverting() {
+        return this._conversions.some((conversion) => conversion.isConverting);
     }
 
     @action.bound

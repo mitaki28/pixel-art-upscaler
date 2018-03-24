@@ -6,12 +6,12 @@ import { generateRandomString } from "../util/random";
 export class App {
 
     @observable upscalerLoader: UpscalerLoader;
-    @observable imageConversionList: UpscaleConversionList;
+    @observable upscaleConversionList: UpscaleConversionList;
     @observable private _uploadKey: string;
 
     constructor() {
         this.upscalerLoader = new WebDNNUpscalerLoader();
-        this.imageConversionList = new UpscaleConversionList();
+        this.upscaleConversionList = new UpscaleConversionList();
         this._uploadKey = generateRandomString();
     }
 
@@ -21,16 +21,23 @@ export class App {
     }
     @computed
     get canStartUpscale() {
-        return !(this.upscalerLoader.state.status === UpscalerLoadingState.LOADING)
+        return this.upscalerLoader.state.status !== UpscalerLoadingState.LOADING
+            && !this.upscaleConversionList.isConverting;
     }
     @action.bound
     updateUploadKey() {
         this._uploadKey = generateRandomString();
     }
+    @computed
+    get isConverting() {
+        return this.upscaleConversionList.isConverting;
+    }
     @action.bound
     async upscale(file: File) {
-        const converter = await this.upscalerLoader.ready();
-        this.imageConversionList.startConversion(file, converter);
-        this.updateUploadKey();
+        if (this.canStartUpscale) {
+            const converter = await this.upscalerLoader.ready();
+            this.upscaleConversionList.startConversion(file, converter);
+            this.updateUploadKey();
+        }
     }
 }

@@ -54,7 +54,7 @@ export class AppContainer extends React.Component<{ store: App }> {
                 <Jumbotron style={{textAlign: "center"}}>
                     <div>
                         <label>
-                            <span className="btn btn-primary">
+                            <span className={"btn btn-primary" + (this.props.store.canStartUpscale ? "" : " disabled")}>
                                 変換するファイルを選択
                                 <FormControl
                                     style={{display: "none"}}
@@ -71,7 +71,7 @@ export class AppContainer extends React.Component<{ store: App }> {
                     </div>
                 </Jumbotron>
                 <div>
-                    <UpscaleConversionListContainer store={this.props.store.imageConversionList} />
+                    <UpscaleConversionListContainer store={this.props.store.upscaleConversionList} />
                 </div>
             </div>
         );
