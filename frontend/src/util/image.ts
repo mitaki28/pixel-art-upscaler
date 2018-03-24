@@ -14,9 +14,9 @@ export function transparentBackgroundColor(img: Jimp.Jimp) {
     }
 }
 
-export function adjustSizeToPowerOf2(img: Jimp.Jimp) {
+export function adjustSizeToPowerOf2(img: Jimp.Jimp, minimumSize: number) {
     let r = 1;
-    while (r < img.bitmap.width || r < img.bitmap.height) {
+    while (r < img.bitmap.width || r < img.bitmap.height || r < minimumSize) {
         r *= 2;
     }
     img.contain(r, r);
