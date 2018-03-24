@@ -14,7 +14,7 @@
 
 いわゆるディープラーニングと呼ばれる技術を用いて実装されており、[pix2pix](https://arxiv.org/abs/1611.07004) というネットワーク構造をベースにしています。実装は[chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)を改造して制作しました。
 
-[こちら](https://razor-edge.work/material/fsmchcv/)で配布されている First Seed Material 様の素材（高解像度版）約7000枚を用いて学習しています。</p>
+[カミソリエッジ](https://razor-edge.work/material/fsmchcv/)様が配布されている First Seed Material 素材（高解像度版）のカラーバリエーション約7000枚を用いて学習しています。</p>
 
 ### 環境構築
 * Python 3.5 が必要です
@@ -29,6 +29,30 @@ pip -r requirements.txt
 ```
 pip install cupy
 ```
+
+### データセット
+1. [カミソリエッジ](https://razor-edge.work/material/fsmchcv/)様のサイトからデータをダウンロードします
+1. 以下のコマンドを実行すると `image/fsm/main` に学習用のデータが生成されます
+```
+python tool/trim-chartip.py extract-fsm ../trim-chartip/src/fsm/**/*.png
+```
+1. `image/fsm/test` については、main からコピー,移動するなり、別の素材を用意するなりして、同様の形式(80x80; RGBA; PNG)の素材を適当に入れてください。
+
+### 学習
+1. 以下のコマンドを実行します
+```
+python train.py
+```
+
+### 学習したモデルを使った画像変換
+1. `model/enc_iter_{iteration}.npz`, `model/dec_iter_{iteration}.npz` のように、同じディレクトリの中に学習済みのモデル一式が置かれていることが前提です。iteration には学習のイテレーション回数（数値列）が入ります
+1. モデルが置かれているディレクトリを `/path/to/model`,  イテレーション回数を 1000000 として、以下のコマンドを実行します
+```
+python run.py --model-dir=/path/to/model --iter=1000000 /path/to/image1.png /path/to/image2.png
+```
+* 学習済みモデル
+    * http://mitaki28.info/pixel-art-upscaler/model/chainer/enc_iter_1400000.npz
+    * http://mitaki28.info/pixel-art-upscaler/model/chainer/dec_iter_1400000.npz
 
 ### 既存の実装+alpha
 いろいろ変えてみましたが、実際のところ、 [chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix) そのままで、128x128 にアップスケールして学習してもそこまで結果は変わってないですが、感覚的にこちらのほうが安定しているような感じはしました。（もともとの chainer-pix2pix を使ったときは Generator が Discriminator に振り回されて l1-loss の収束率が悪い感じがしました。）
