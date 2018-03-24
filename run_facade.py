@@ -50,6 +50,19 @@ def main():
     chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(args.iter), enc)
     chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(args.iter), dec)
 
+    # hack: add-hook fix for broken batch normalization
+    xp = enc.xp
+    for i in range(1, 8):
+        cbr = enc['c{}'.format(i)]
+        if xp.isnan(cbr.batchnorm.avg_var[-1]):
+            print('enc.c{} is broken'.format(i))
+            cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
+    for i in range(0, 7):
+        cbr = dec['c{}'.format(i)]
+        if xp.isnan(cbr.batchnorm.avg_var[-1]):
+            print('dec.c{} is broken'.format(i))
+            cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
+
     out_dir = Path(args.out)
     single_dir = out_dir/'single'
     compare_dir = out_dir/'compare'
