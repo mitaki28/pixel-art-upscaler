@@ -10,8 +10,8 @@ export class UpscaleConversionListContainer extends React.Component<{ store: Ups
         return (
             <Grid>
                 {
-                    this.props.store.conversions.map((conversion, i) => 
-                        <Row><UpscaleConversionContainer key={i} store={conversion} /></Row>
+                    this.props.store.conversions.map((conversion) => 
+                        <Row><UpscaleConversionContainer key={conversion.id} store={conversion} /></Row>
                     )
                 }
             </Grid>

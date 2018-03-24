@@ -150,7 +150,7 @@ export class UpscaleConversion {
 
     @computed
     get canClose() {
-        return this.state.status === UpscaleConversionState.CONVERTING;
+        return this.state.status !== UpscaleConversionState.CONVERTING;
     }
 
     @action.bound
@@ -191,6 +191,6 @@ export class UpscaleConversionList {
         if (!conversion.canClose) {
             return;
         }
-        this._conversions = this._conversions.filter((c) => c != conversion)
+        this._conversions = this._conversions.filter((c) => c !== conversion)
     }
 }

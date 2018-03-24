@@ -2,7 +2,7 @@ import * as React from "react";
 import { observer } from "mobx-react"
 import { UpscaleConversionList, UpscaleConversion, UpscaleConversionState } from "../store/UpscaleConversion";
 import { ConversionError } from "../store/Converter";
-import { Row, Panel, Col, Well } from "react-bootstrap";
+import { Row, Panel, Col, Well, Glyphicon, Button } from "react-bootstrap";
 import { Loading } from "../component/Loading";
 
 @observer
@@ -51,24 +51,29 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
 
     render() {
         return (
-            <Well style={{ overflow: "hidden" }}>
-                <Col md={4}>
-                    <Panel style={{ width: "100%", textAlign: "center" }}>
-                        <Panel.Heading>元画像</Panel.Heading>
-                        <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white"}}>
-                            {this.renderInputImage()}
-                        </Panel.Body>
-                    </Panel>
-                </Col>
-                <Col md={4}>
-                    <Panel style={{ width: "100%", textAlign: "center" }}>
-                        <Panel.Heading>変換後</Panel.Heading>
-                        <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
-                            {this.renderConvertedImage()}
-                        </Panel.Body>
-                    </Panel>
-                </Col>
-            </Well>
+            <Panel>
+                <Panel.Heading style={{textAlign: "right"}}>
+                    <Button bsStyle="danger" onClick={this.props.store.close}><Glyphicon glyph="remove" /></Button>
+                </Panel.Heading>
+                <Panel.Body style={{ overflow: "hidden" }}>
+                    <Col md={4}>
+                        <Panel style={{ width: "100%", textAlign: "center" }}>
+                            <Panel.Heading>元画像</Panel.Heading>
+                            <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white"}}>
+                                {this.renderInputImage()}
+                            </Panel.Body>
+                        </Panel>
+                    </Col>
+                    <Col md={4}>
+                        <Panel style={{ width: "100%", textAlign: "center" }}>
+                            <Panel.Heading>変換後</Panel.Heading>
+                            <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
+                                {this.renderConvertedImage()}
+                            </Panel.Body>
+                        </Panel>
+                    </Col>
+                </Panel.Body>
+            </Panel>
         );
     }
 }
