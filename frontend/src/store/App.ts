@@ -8,17 +8,24 @@ export class App {
     @observable upscalerLoader: UpscalerLoader;
     @observable upscaleConversionList: UpscaleConversionList;
     @observable private _uploadKey: string;
+    @observable private _isShowingAbout: boolean;
 
     constructor() {
         this.upscalerLoader = new WebDNNUpscalerLoader();
         this.upscaleConversionList = new UpscaleConversionList();
         this._uploadKey = generateRandomString();
+        this._isShowingAbout = false;
     }
 
     @computed
     get uploadKey() {
         return this._uploadKey;
     }
+    @computed
+    get isShowingAbout() {
+        return this._isShowingAbout;
+    }
+
     @computed
     get canStartUpscale() {
         return this.upscalerLoader.state.status !== UpscalerLoadingState.LOADING
@@ -39,5 +46,15 @@ export class App {
             this.upscaleConversionList.startConversion(file, converter);
             this.updateUploadKey();
         }
+    }
+
+    @action.bound
+    async showAbout() {
+        this._isShowingAbout = true;
+    }
+
+    @action.bound
+    async hideAbout() {
+        this._isShowingAbout = false;
     }
 }

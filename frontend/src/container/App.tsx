@@ -4,7 +4,8 @@ import { App } from "../store/App";
 import { UpscaleConversionList } from "../store/UpscaleConversion";
 import { UpscaleConversionListContainer } from "./UpscaleConversionList";
 import { UpscalerLoadingState } from "../store/Upscaler";
-import { Navbar, Nav, NavItem, Jumbotron, FormControl, Modal, ProgressBar } from "react-bootstrap";
+import { Navbar, Nav, NavItem, Jumbotron, FormControl, Modal, ProgressBar, Button } from "react-bootstrap";
+import { About } from "../component/About";
 
 @observer
 export class AppContainer extends React.Component<{ store: App }> {
@@ -44,12 +45,21 @@ export class AppContainer extends React.Component<{ store: App }> {
                         {this.renderUpscalerLoadingStatus()}
                     </Modal.Body>
                 </Modal>
+                <Modal container={this} show={this.props.store.isShowingAbout} onHide={this.props.store.hideAbout}>
+                    <Modal.Body><About /></Modal.Body>
+                    <Modal.Footer><Button onClick={this.props.store.hideAbout}>閉じる</Button></Modal.Footer>
+                </Modal>
                 <Navbar>
                     <Navbar.Header>
                         <Navbar.Brand>
                         <a href="#">Pixel-Art Upscaler</a>
                         </Navbar.Brand>
                     </Navbar.Header>
+                    <Nav>
+                        <NavItem onClick={this.props.store.showAbout}>
+                            About
+                        </NavItem>
+                    </Nav>
                 </Navbar>
                 <Jumbotron style={{textAlign: "center"}}>
                     <div>
