@@ -39,7 +39,7 @@ export class WebDNNUpscaler implements Upscaler {
         const srcHeight = img.bitmap.height;
         const srcWidth = img.bitmap.width;
         if (srcHeight > MAX_HEIGHT || srcWidth > MAX_WIDTH) {
-            return left(ConversionError.tooLarge({ width: MAX_WIDTH, height: MAX_HEIGHT }))
+            return left(ConversionError.tooLargeResolution({ width: MAX_WIDTH, height: MAX_HEIGHT }))
         }
 
         transparentBackgroundColor(img);

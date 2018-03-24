@@ -13,12 +13,12 @@ export namespace ConversionError {
     });
 
 
-    export const TOO_LARGE_RESOLUTION = Symbol("TOO_LARGE");
-    export type TooLarge = {
+    export const TOO_LARGE_RESOLUTION = Symbol("TOO_LARGE_RESOLUTION");
+    export type TooLargeResolution = {
         code: typeof ConversionError.TOO_LARGE_RESOLUTION,
         limit: { width: number, height: number },
     };
-    export const tooLarge = (limit: { width: number, height: number }): TooLarge => ({
+    export const tooLargeResolution = (limit: { width: number, height: number }): TooLargeResolution => ({
         code: ConversionError.TOO_LARGE_RESOLUTION,
         limit,
     });
@@ -36,7 +36,7 @@ export namespace ConversionError {
 
 export type ConversionError =
     ConversionError.FailedToLoad
-    | ConversionError.TooLarge
+    | ConversionError.TooLargeResolution
     | ConversionError.FailedToConvert;
 
 export interface Converter {
