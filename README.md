@@ -1,6 +1,6 @@
 ## Pixel-Art Upscaler(仮)
 
-* Demo： https://github.com/mitaki28/pixel-art-upscaler
+* Demo： http://mitaki28.info/pixel-art-upscaler/
 
 このコードは[chaienr-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)をベースにして作成されています。
 
