@@ -4,9 +4,9 @@
 
 このコードは[chaienr-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)をベースにして作成されています。
 
-![ドット絵の超解像]("https://raw.githubusercontent.com/mitaki28/pixel-art-upscaler/master/image/example.png")
+<img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/example.png?raw=true">
 
-(変換元素材: [白螺子屋](http://hi79.web.fc2.com/)様, 学習データ: [First Seed Material](https://razor-edge.work/material/fsmchcv/) 様【閉鎖されてしまったので、代理配布先】）)
+(変換元素材: [白螺子屋](http://hi79.web.fc2.com/)様, 学習データ: [カミソリエッジ](https://razor-edge.work/material/fsmchcv/) 様【オリジナルの素材を配布していたのは First Seed Material 様（サイト閉鎖）】）
 
 32x32〜16x16程度のキャラチップを前提としたドット絵の拡大ツールです。
 
@@ -17,19 +17,19 @@
 [こちら](https://razor-edge.work/material/fsmchcv/)で配布されている First Seed Material 様の素材（高解像度版）約7000枚を用いて学習しています。</p>
 
 ### 既存の実装+alpha
-いろいろ変えてみましたが、実際のところ、 [chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix) そのままで、128x128 にアップスケールして学習してもそこまで結果は変わってないですが、感覚的にこちらのほうが安定しているような感じはしました。（もともとの chainer-pix2pix を使ったときは Generator が Discriminator に振り回されて l1-loss の収束率が悪い感じがしました。）
+いろいろ変えてみましたが、実際のところ、 [chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix) そのままで、128x128 にアップスケールして学習してもそこまで結果は変わってないですが、感覚的にこちらのほうが安定しているような感じはしました。（もともとの chainer-pix2pix を使ったときは Generator が Discriminator に振り回されて l1-loss の収束率が悪い感じがしました。）
 
 * 最近、良いと言われている手法をいくつか取り入れています
     * Deconvolution2D を [Nearest-Neighbor ResizeConvolution](https://distill.pub/2016/deconv-checkerboard/) に換装(効果があるかは微妙)
-    * Generater/Discriminater の loss 関数を [LSGAN](https://arxiv.org/abs/1611.04076) に変更(効果があるかは微妙)
+    * Generater/Discriminater の loss 関数を [LSGAN](https://arxiv.org/abs/1611.04076) に変更(効果があるかは微妙)
         * 同時に lam1 倍率を100→10に変更してます（経験上、lsgan に換装すると loss は10分の1ぐらいにスケールされる）
-        * 同じ人が作成した [CycleGAN](https://github.com/junyanz/CycleGAN) でも採用されているより安定性の高い loss 関数
-* pix2pix ネットワークの encoder, decoder の最上段を kernel size 5x5, stride 1, padding 2 の Convolution2D に換装（効果あり; l1-loss の減少が安定する）
+        * 同じ人が作成した [CycleGAN](https://github.com/junyanz/CycleGAN) でも採用されているより安定性の高い loss 関数
+* pix2pix ネットワークの encoder, decoder の最上段を kernel size 5x5, stride 1, padding 2 の Convolution2D に換装（効果あり; l1-loss の減少が安定する）
     * もとのネットワークでは画像サイズが128x128以上ないと、画像幅が足りずエラーになります
-    * そこで、最上段を5x5のConvolution2D(縮小なし)に換装しました
-    * 3x3 ではなく5x5 なのは [既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms) が5x5のconvolutionをベースとしていたことや、より広い範囲を見たほうが、そのドットのコンテキストを推論しやすいだろうという予想のもとです
+    * そこで、最上段を5x5のConvolution2D(縮小なし)に換装しました
+    * 3x3 ではなく5x5 なのは [既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms) が5x5のconvolutionをベースとしていたことや、より広い範囲を見たほうが、そのドットのコンテキストを推論しやすいだろうという予想のもとです
 
-#### その他
+#### その他
 * batchsize はマシンスペックに余裕があっても敢えて1にすべきです(効果あり; batchsize=4のときと比較して l1-loss の収束に0.5(lam1=100 のとき)程度の差がありました)
     * ただし、現状、 chainer のバグ？で、 batchsize=1 のとき、一部の BatchNormalization の重みが nan になってしまい、 test モードでの学習ができなくなるようです
         * Web アプリ版のモデルでは、 nan になった重みを無理やり 0 に補正しているため、精度が落ちているように見えます
