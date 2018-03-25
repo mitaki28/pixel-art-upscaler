@@ -6,6 +6,7 @@ chainerui==0.2.0
 click==6.7
 cycler==0.10.0
 filelock==3.0.4
+fire==0.1.3
 Flask==0.12.2
 itsdangerous==0.24
 Jinja2==2.10
@@ -23,4 +24,5 @@ pytz==2018.3
 six==1.11.0
 SQLAlchemy==1.2.5
 tzlocal==1.5.1
+webdnn==1.2.2
 Werkzeug==0.12.2
