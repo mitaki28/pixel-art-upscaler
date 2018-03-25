@@ -85,7 +85,7 @@ python run.py --model-dir=/path/to/model --iter=1000000 /path/to/image1.png /pat
 
 ### 備考
 * batchsize はマシンスペックに余裕があっても敢えて1にすべきです(効果あり; batchsize=4のときと比較して l1-loss の収束に0.5(lam1=100 のとき)程度の差がありました)
-    * ただし、現状、 chainer のバグ？で、 batchsize=1 のとき、一部の BatchNormalization の重みが nan になってしまい、 test モードでの学習ができなくなるようです
+    * ただし、現状、 chainer のバグ？で、 batchsize=1 のとき、一部の BatchNormalization の重みが nan になってしまい、 test モードでの計算ができなくなるようです
         * Web アプリ版のモデルでは、 nan になった重みを無理やり 0 に補正しているため、精度が落ちているように見えます
     * batchsize=1 のときの BatchNormalization は InstanceNormalization と等価になり、性質が変わるとのことです
         * https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/issues/27
