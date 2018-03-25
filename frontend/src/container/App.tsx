@@ -23,7 +23,7 @@ export class AppContainer extends React.Component<{ store: App }> {
             case UpscalerLoadingState.LOADING:
                 return (
                     <div>
-                        <p style={{textAlign: "center"}}>【初回のみ】モデルのロード中・・・</p>
+                        <p style={{ textAlign: "center" }}>【初回のみ】モデルのロード中・・・</p>
                         <ProgressBar active now={100} />
                     </div>
                 );
@@ -36,11 +36,11 @@ export class AppContainer extends React.Component<{ store: App }> {
 
     render() {
         return (
-            <div className="container" style={{height: "100%"}}>
+            <div className="container" style={{ height: "100%" }}>
                 <Modal container={this} show={
                     this.props.store.upscalerLoader.state.status === UpscalerLoadingState.LOADING
-                        || this.props.store.upscalerLoader.state.status === UpscalerLoadingState.LOAD_FAILURE
-                    } onHide={() => undefined}>
+                    || this.props.store.upscalerLoader.state.status === UpscalerLoadingState.LOAD_FAILURE
+                } onHide={() => undefined}>
                     <Modal.Body>
                         {this.renderUpscalerLoadingStatus()}
                     </Modal.Body>
@@ -52,22 +52,25 @@ export class AppContainer extends React.Component<{ store: App }> {
                 <Navbar>
                     <Navbar.Header>
                         <Navbar.Brand>
-                        <a href="#">Pixel-Art Upscaler</a>
+                            <a href="#">Pixel-Art Upscaler</a>
                         </Navbar.Brand>
                     </Navbar.Header>
                     <Nav>
                         <NavItem onClick={this.props.store.showAbout}>
                             About
                         </NavItem>
+                        <NavItem href="https://github.com/mitaki28/pixel-art-upscaler">
+                            GitHub
+                        </NavItem>
                     </Nav>
                 </Navbar>
-                <Jumbotron style={{textAlign: "center"}}>
+                <Jumbotron style={{ textAlign: "center" }}>
                     <div>
                         <label>
                             <span className={"btn btn-primary" + (this.props.store.canStartUpscale ? "" : " disabled")}>
                                 変換するファイルを選択
                                 <FormControl
-                                    style={{display: "none"}}
+                                    style={{ display: "none" }}
                                     type="file"
                                     key={this.props.store.uploadKey}
                                     onChange={this.handleOnFileChange}
