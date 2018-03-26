@@ -64,7 +64,6 @@ export function hwcFloat32ArrayToImage(array: Float32Array, channel: number, h: 
     ret.deflateLevel(0);
     ret.scan(0, 0, w, h, (x, y, idx) => {
         for (let c = 0; c < channel; c++) {
-            console.log(`(${x}, ${y}, ${c}) = (${array[y * (w * channel) + x * channel + c]})`)
             ret.bitmap.data[idx + c] = Math.floor(array[y * (w * channel) + x * channel + c]);
         }
     });
