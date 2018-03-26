@@ -47,7 +47,7 @@ def main():
     parser.add_argument('--compare', action='store_true', default=False, help='scale output image to half size or not')
 
     parser.add_argument('--model_dir', help='path to model directory')
-    parser.add_argument('--iter', type=int, help='iteration of load model')
+    parser.add_argument('--iter', type=str, help='iteration of load model')
     args = parser.parse_args()
 
     model_dir = Path(args.model_dir)
