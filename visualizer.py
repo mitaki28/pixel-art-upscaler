@@ -91,5 +91,6 @@ def convert_image_base(img, xp, converter):
 
 def convert_image(img, enc, dec):
     def converter(x_in):
-        return dec(enc(x_in))
+        with chainer.using_config('train', False):
+            return dec(enc(x_in))
     return convert_image_base(img, enc.xp, converter)
