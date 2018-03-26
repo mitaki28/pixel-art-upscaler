@@ -4,7 +4,7 @@ import { App } from "../store/App";
 import { UpscaleConversionList } from "../store/UpscaleConversion";
 import { UpscaleConversionListContainer } from "./UpscaleConversionList";
 import { UpscalerLoadingState } from "../store/Upscaler";
-import { Navbar, Nav, NavItem, Jumbotron, FormControl, Modal, ProgressBar, Button } from "react-bootstrap";
+import { Navbar, Nav, NavItem, Jumbotron, FormControl, Modal, ProgressBar, Button, Alert } from "react-bootstrap";
 import { About } from "../component/About";
 
 @observer
@@ -64,6 +64,9 @@ export class AppContainer extends React.Component<{ store: App }> {
                         </NavItem>
                     </Nav>
                 </Navbar>
+                <Alert bsStyle="warning">
+                  <strong>注意!</strong>{" "}Webアプリ版は移植の関係上、コンソール版よりも精度の低い画像が生成されます。
+                </Alert>
                 <Jumbotron style={{ textAlign: "center" }}>
                     <div>
                         <label>
