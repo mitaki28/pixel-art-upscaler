@@ -4,7 +4,7 @@
 
 このコードは[chaienr-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)をベースにして作成されています。
 
-<img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/example.png?raw=true">
+<img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/example.gif?raw=true">
 
 (変換元素材: [白螺子屋](http://hi79.web.fc2.com/)様, 学習データ: [カミソリエッジ](https://razor-edge.work/material/fsmchcv/) 様【オリジナルの素材を配布していたのは First Seed Material 様（サイト閉鎖）】）
 
@@ -41,8 +41,22 @@ python tool/trim-chartip.py extract-fsm ../trim-chartip/src/fsm/**/*.png
 ### 学習
 1. 以下のコマンドを実行します
 ```
-python train.py
+python train.py -e 400
 ```
+
+※以下は現時点で一番性能の良いモデルを生成したときの手順です。（実際には500000〜1000000イテレーションで切り替えても大丈夫そうな感じはします）
+
+1. 1900000 イテレーション回した後、手動で updater.py の lam1 の値を160に変更した上で、さらに以下のコマンドを実行します
+```
+python train.py -e 400 -r result/snapshot_iter_1900000.npz
+```
+1. 2000000 イテレーションで停止します
+
+* 学習済みモデル
+    * http://mitaki28.info/pixel-art-upscaler/model/chainer/enc_iter_2000000.npz
+    * http://mitaki28.info/pixel-art-upscaler/model/chainer/dec_iter_2000000.npz
+
+
 
 ### 学習したモデルを使った画像変換
 1. `model/enc_iter_{iteration}.npz`, `model/dec_iter_{iteration}.npz` のように、同じディレクトリの中に学習済みのモデル一式が置かれていることが前提です。iteration には学習のイテレーション回数（数値列）が入ります
@@ -50,9 +64,6 @@ python train.py
 ```
 python run.py --model-dir=/path/to/model --iter=1000000 /path/to/image1.png /path/to/image2.png
 ```
-* 学習済みモデル
-    * http://mitaki28.info/pixel-art-upscaler/model/chainer/enc_iter_1400000.npz
-    * http://mitaki28.info/pixel-art-upscaler/model/chainer/dec_iter_1400000.npz
 
 
 ### 既存の実装からの変更点
@@ -67,6 +78,15 @@ python run.py --model-dir=/path/to/model --iter=1000000 /path/to/image1.png /pat
             * 画像をランダムに平行移動することによって、この4種類の結果をすべて学習データセットに加えることができ、実質的に画像を4倍に水増しできます
             * さらに、目などの細かいピクセルの模様も nearest neighbor 縮小のいずれかのパターンではきれいに残っていること多いので、学習を繰り返すことで、適切な復元方法にたどり着ける可能性が上がります
     * nearest neighbor 法(PIL.Image.NEAREST_NEIGHBOR によるリサイズ)で縮小し、再度64x64に nearest_neighbor 法で拡大したものを変換元、もとの画像を変換先として学習します
+
+#### l1-loss の倍率について
+* l1-loss の倍率（lam1）は、少なくとも10倍では小さすぎるようです。現状、1900000イテレーション回した後、lam1=160として100000イテレーション追加で学習することにより、l1-lossと生成画像の安定性が向上しました。
+    * 1400000 イテレーション
+        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art_1400000.png?raw=true">
+    * 1900000 イテレーション + lam1=160 で 100000 イテレーション
+        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art_1900000_lam1-160-100000.png?raw=true">
+
+* その後、320まで倍率を上げて追加で600000イテレーションほど回しました。l1-loss は lam1=100 相当で2.0程度まで減りましたが、エッジが不自然に太くなったりしていたので、単純に l1-loss の小ささだけで良さが決まるわけでもなさそうです。
 
 #### その他
 
