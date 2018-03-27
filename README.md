@@ -82,9 +82,9 @@ python run.py --model-dir=/path/to/model --iter=1000000 /path/to/image1.png /pat
 #### l1-loss の倍率について
 * l1-loss の倍率（lam1）は、少なくとも10倍では小さすぎるようです。現状、1900000イテレーション回した後、lam1=160として100000イテレーション追加で学習することにより、l1-lossと生成画像の安定性が向上しました。
     * 1400000 イテレーション
-        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art_1400000.png?raw=true">
+        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art-1400000.png?raw=true">
     * 1900000 イテレーション + lam1=160 で 100000 イテレーション
-        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art_1900000_lam1-160-100000.png?raw=true">
+        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art-1900000_lam1-160-100000.png?raw=true">
 
 * その後、320まで倍率を上げて追加で600000イテレーションほど回しました。l1-loss は lam1=100 相当で2.0程度まで減りましたが、エッジが不自然に太くなったりしていたので、単純に l1-loss の小ささだけで良さが決まるわけでもなさそうです。
 
