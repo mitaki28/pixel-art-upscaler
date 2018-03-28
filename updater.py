@@ -44,9 +44,9 @@ class FacadeUpdater(chainer.training.StandardUpdater):
     def loss_func_rec_gen(self, x_in, x_out):
         return F.mean_absolute_error(x_out, x_in)
 
-    def loss_gen(self, enc, x_out, x_in, y_fake, lam1=10, lam2=1):
+    def loss_gen(self, enc, x_out, x_in, y_fake, lam1=100, lam2=1):
         loss_rec = lam1*self.loss_func_rec_gen(x_in, x_out)
-        loss_adv = lam2*self.loss_func_adv_gen_ls(y_fake)
+        loss_adv = lam2*self.loss_func_adv_gen(y_fake)
         loss = loss_rec + loss_adv
         chainer.report({'loss_rec': loss_rec}, enc)
         chainer.report({'loss_adv': loss_adv}, enc)
@@ -54,8 +54,8 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         return loss
 
     def loss_dis(self, dis, y_real, y_fake):
-        L1 = self.loss_func_adv_dis_real_ls(y_real)
-        L2 = self.loss_func_adv_dis_fake_ls(y_fake)
+        L1 = self.loss_func_adv_dis_real(y_real)
+        L2 = self.loss_func_adv_dis_fake(y_fake)
         loss = L1 + L2
         chainer.report({'loss': loss}, dis)
         return loss

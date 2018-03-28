@@ -1,9 +1,10 @@
 import numpy as np
 
 from random import random
-from PIL import Image
+from PIL import Image, ImageFilter
 from chainer.dataset import dataset_mixin
 from pathlib import Path
+from chainercv.transforms import center_crop
 from chainercv.transforms import random_crop
 from chainercv.transforms import random_flip
 from chainercv.transforms import resize_contain
@@ -66,7 +67,12 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
         t = argument_image(t, C_label, self.charSize, self.fineSize)
-        t = resize(t, (64, 64), Image.NEAREST)
+        
+        label, img = t[:C_label], t[C_label:]
+        label = resize(resize(label, (32, 32), Image.BOX), (64, 64), Image.BOX)
+        t = np.concatenate([label, img], axis=0)
+
+        t = resize(t, (128, 128), Image.NEAREST)                
         return t[:C_label], t[C_label:]
     
 class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
@@ -95,11 +101,32 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
         img = random_crop(img, (64, 64))
         img = random_flip(img, x_random=True)
 
-        label = resize(resize(img, (32, 32), Image.NEAREST), (64, 64), Image.NEAREST)
-        img = resize(img, (64, 64), Image.NEAREST)
+        label = resize(resize(img, (32, 32), Image.NEAREST), (128, 128), Image.NEAREST)
+        img = resize(img, (128, 128), Image.NEAREST)
         return label, img
 
 class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
+
+    def __init__(self, labelDir):
+        self.labelDir = Path(labelDir)
+        self.filepaths = list(self.labelDir.glob("*.png"))
+        print("{} images loaded".format(len(self.filepaths)))
+
     def get_example(self, i):
-        label, img = super().get_example(i)
-        return img, label
+        with Image.open(str(self.filepaths[i])) as f:
+            img = convert_image(f)
+
+        # random background color
+        # bgMask = ((-img + 1.0) / 2.0)[3,:,:]
+        # bgMaskR = bgMask * (random() * 2.0 - 1.0)
+        # bgMaskG = bgMask * (random() * 2.0 - 1.0)
+        # bgMaskB = bgMask * (random() * 2.0 - 1.0)
+        # img[0,:,:] += bgMaskR
+        # img[1,:,:] += bgMaskG
+        # img[2,:,:] += bgMaskB
+
+        img = random_crop(img, (64, 64))
+        img = random_flip(img, x_random=True)
+        label = resize(resize(img, (32, 32), Image.BOX), (128, 128), Image.NEAREST)
+        img = resize(img, (128, 128), Image.BOX)
+        return label, img
