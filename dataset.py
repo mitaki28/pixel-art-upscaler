@@ -75,7 +75,7 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
         label, img = t[:C_label], t[C_label:]
         t = np.concatenate([label, img], axis=0)
 
-        t = resize(t, (128, 128), Image.NEAREST)                
+        t = resize(t, (64, 64), Image.NEAREST)                
         return t[:C_label], t[C_label:]
     
 class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
@@ -138,5 +138,5 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
 
         t = center_crop(t, (64, 64))
         t = random_flip(t, x_random=True)
-        t = resize(t, (128, 128), Image.NEAREST)
+        t = resize(t, (64, 64), Image.NEAREST)
         return t[:C_label], t[C_label:]
