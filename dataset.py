@@ -64,12 +64,15 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
             img = convert_image(f)
         with Image.open(self.labelDir/filename) as f:
             label = convert_image(f)
+        C, H, W = label.shape
+        label += 1.0
+        label[:,::2,::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
+        label -= 1.0
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
         t = argument_image(t, C_label, self.charSize, self.fineSize)
         
         label, img = t[:C_label], t[C_label:]
-        label = resize(resize(label, (32, 32), Image.BOX), (64, 64), Image.BOX)
         t = np.concatenate([label, img], axis=0)
 
         t = resize(t, (128, 128), Image.NEAREST)                
@@ -114,19 +117,24 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
 
     def get_example(self, i):
         with Image.open(str(self.filepaths[i])) as f:
-            img = convert_image(f)
+            label = convert_image(f)
+        img = label
+        C, H, W = label.shape
+        label += 1.0
+        label[:,::2,::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
+        label -= 1.0
 
         # random background color
-        # bgMask = ((-img + 1.0) / 2.0)[3,:,:]
+        # bgMask = ((-label + 1.0) / 2.0)[3,:,:]
         # bgMaskR = bgMask * (random() * 2.0 - 1.0)
         # bgMaskG = bgMask * (random() * 2.0 - 1.0)
         # bgMaskB = bgMask * (random() * 2.0 - 1.0)
-        # img[0,:,:] += bgMaskR
-        # img[1,:,:] += bgMaskG
-        # img[2,:,:] += bgMaskB
+        # label[0,:,:] += bgMaskR
+        # label[1,:,:] += bgMaskG
+        # label[2,:,:] += bgMaskB
 
-        img = random_crop(img, (64, 64))
-        img = random_flip(img, x_random=True)
-        label = resize(resize(img, (32, 32), Image.BOX), (128, 128), Image.NEAREST)
-        img = resize(img, (128, 128), Image.BOX)
+        label = center_crop(label, (64, 64))
+        label = random_flip(label, x_random=True)
+        label = resize(label, (128, 128), Image.NEAREST)
+        img = resize(center_crop(img, (64, 64)), (128, 128), Image.NEAREST)
         return label, img
