@@ -1,6 +1,6 @@
 import numpy as np
 
-from random import random
+import random
 from PIL import Image, ImageFilter
 from chainer.dataset import dataset_mixin
 from pathlib import Path
@@ -10,6 +10,7 @@ from chainercv.transforms import random_flip
 from chainercv.transforms import resize_contain
 from chainercv.transforms import resize
 from chainercv.utils import read_image
+
 
 def random_crop_by_2(img, C_label, pH, pW, fH, fW):
     y = np.random.randint(pH)
@@ -65,9 +66,8 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
         with Image.open(self.labelDir/filename) as f:
             label = convert_image(f)
         C, H, W = label.shape
-        label += 1.0
-        label[:,1::2,1::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
-        label -= 1.0
+        py, px = random.choice([(0, 0), (1, 0), (0, 1)])
+        label[:,1::2,1::2] = label[:,py::2,px::2]
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
         t = argument_image(t, C_label, self.charSize, self.fineSize)
@@ -120,9 +120,9 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
             label = convert_image(f)
         img = label.copy()
         C, H, W = label.shape
-        label += 1.0
-        label[:,1::2,1::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
-        label -= 1.0
+        # py, px = random.choice([(0, 0), (1, 0), (0, 1)])
+        # label[:,1::2,1::2] = label[:,py::2,px::2]
+
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
 
