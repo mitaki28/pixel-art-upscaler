@@ -66,7 +66,7 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
             label = convert_image(f)
         C, H, W = label.shape
         label += 1.0
-        label[:,::2,::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
+        label[:,1::2,1::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
         label -= 1.0
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
@@ -121,7 +121,7 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
         img = label.copy()
         C, H, W = label.shape
         label += 1.0
-        label[:,::2,::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
+        label[:,1::2,1::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
         label -= 1.0
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
