@@ -118,11 +118,14 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
     def get_example(self, i):
         with Image.open(str(self.filepaths[i])) as f:
             label = convert_image(f)
-        img = label
+        img = label.copy()
         C, H, W = label.shape
         label += 1.0
         label[:,::2,::2] = np.zeros((4, H // 2, W // 2), dtype=np.float)
         label -= 1.0
+        C_label = label.shape[0]
+        t = np.concatenate([label, img], axis=0)
+
 
         # random background color
         # bgMask = ((-label + 1.0) / 2.0)[3,:,:]
@@ -133,8 +136,7 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
         # label[1,:,:] += bgMaskG
         # label[2,:,:] += bgMaskB
 
-        label = center_crop(label, (64, 64))
-        label = random_flip(label, x_random=True)
-        label = resize(label, (128, 128), Image.NEAREST)
-        img = resize(center_crop(img, (64, 64)), (128, 128), Image.NEAREST)
-        return label, img
+        t = center_crop(t, (64, 64))
+        t = random_flip(t, x_random=True)
+        t = resize(t, (128, 128), Image.NEAREST)
+        return t[:C_label], t[C_label:]
