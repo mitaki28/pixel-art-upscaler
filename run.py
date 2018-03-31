@@ -47,7 +47,11 @@ def main():
     parser.add_argument('--compare', action='store_true', default=False, help='scale output image to half size or not')
 
     parser.add_argument('--model_dir', help='path to model directory')
-    parser.add_argument('--iter', type=str, help='iteration of load model')
+    parser.add_argument('--iteration', type=str, help='iteration of load model')
+    parser.add_argument('--downscale', action='store_true', default=False,
+                        help='enable downscale learning',
+    )
+    
     args = parser.parse_args()
 
     model_dir = Path(args.model_dir)
@@ -62,7 +66,6 @@ def main():
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         enc.to_gpu()  # Copy the model to the GPU
         dec.to_gpu()
-        dis.to_gpu()
 
     chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(args.iter), enc)
     chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(args.iter), dec)
@@ -99,17 +102,23 @@ def main():
             img = img.convert('RGBA')
             img = transparent_background(img)
             img = pad_power_of_2(img)
-            preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
+            if args.downscale:
+                preprocessed_img = img
+            else:
+                preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
             converted_img = convert_image(preprocessed_img, enc, dec).convert('RGBA')
             
-            cW, cH = converted_img.size
-            pW, pH = (cW - oW * 2, cH - oH * 2)
-            postprocessed_img = converted_img.crop((
-                pW // 2,
-                pH // 2,
-                pW // 2 + oW * 2,
-                pH // 2 + oH * 2
-            ))
+            if args.downscale:
+                postprocessed_img = convert_image
+            else:
+                cW, cH = converted_img.size
+                pW, pH = (cW - oW * 2, cH - oH * 2)
+                postprocessed_img = converted_img.crop((
+                    pW // 2,
+                    pH // 2,
+                    pW // 2 + oW * 2,
+                    pH // 2 + oH * 2
+                ))
             postprocessed_img.save(single_path)
             print(image_path, '->', single_path)
 
