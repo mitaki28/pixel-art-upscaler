@@ -67,8 +67,8 @@ def main():
         enc.to_gpu()  # Copy the model to the GPU
         dec.to_gpu()
 
-    chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(args.iter), enc)
-    chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(args.iter), dec)
+    chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(args.iteration), enc)
+    chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(args.iteration), dec)
 
     # hack: add-hook fix for broken batch normalization
     xp = enc.xp
@@ -109,7 +109,14 @@ def main():
             converted_img = convert_image(preprocessed_img, enc, dec).convert('RGBA')
             
             if args.downscale:
-                postprocessed_img = convert_image
+                cW, cH = converted_img.size
+                pW, pH = (cW - oW * 2, cH - oH * 2)
+                postprocessed_img = converted_img.crop((
+                    pW // 2,
+                    pH // 2,
+                    pW // 2 + oW,
+                    pH // 2 + oH,
+                ))                
             else:
                 cW, cH = converted_img.size
                 pW, pH = (cW - oW * 2, cH - oH * 2)
