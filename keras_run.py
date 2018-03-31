@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 import fire
 import math
+import os
 
 import keras
 import keras_model
@@ -10,13 +12,13 @@ import dataset
 import chainer
 
 class GeneratorVisualizer(keras.callbacks.Callback):
-    def __init__(self, gen, test_iterator, n, out_dir):
+    def __init__(self, preview_iteration_interval, test_iterator, n, out_dir):
         self.test_iterator = test_iterator
         self.n = n
         self.iteration = 0
         self.out_dir = Path(out_dir)
         self.epoch = 0
-        self.gen = gen
+        self.preview_iteration_interval = preview_iteration_interval
 
     def on_epoch_begin(self, epoch, logs={}):
         self.epoch = epoch
@@ -25,7 +27,10 @@ class GeneratorVisualizer(keras.callbacks.Callback):
         self.iteration += 1
 
     def on_batch_end(self, batch, logs={}):
-        n_pattern = 4
+        if self.iteration % self.preview_iteration_interval != 0:
+            return
+
+        n_pattern = 3
         n_images = self.n * n_pattern
 
         rows = self.n
@@ -33,19 +38,22 @@ class GeneratorVisualizer(keras.callbacks.Callback):
         
         ret = []
         
-        for it in range(n):
-            x_in = test_iterator.next()
-            x_in = x_in.transpose((0, 2, 3, 1)).reshape(x_in[1:])
-            x_real = x_real.transpose((0, 2, 3, 1)).reshape(x_real[1:])
-            x_out = self.model.get_layer('Generator').predicate(x_in)
+        for it in range(self.n):
+            batch = self.test_iterator.next()
+            x_in = np.asarray([b[0] for b in batch]).astype('f')
+            x_real = np.asarray([b[1] for b in batch]).astype('f')
+
+            x_in = x_in.transpose((0, 2, 3, 1))
+            x_real = x_real.transpose((0, 2, 3, 1))
+            x_out = self.model.get_layer('Generator').predict(x_in)
     
-            ret.append(x_in)
-            ret.append(t_out)
-            ret.append(x_out)
+            ret.append(x_in[0])
+            ret.append(x_real[0])
+            ret.append(x_out[0])
         
         def save_image(x, name, mode=None):
-            _, C, H, W = x.shape
-            x = x.reshape((rows, cols, C, H, W))
+            _, H, W, C = x.shape
+            x = x.reshape((rows, cols, H, W, C))
             x = x.transpose(0, 2, 1, 3, 4)
             if C==1:
                 x = x.reshape((rows*H, cols*W))
@@ -60,8 +68,6 @@ class GeneratorVisualizer(keras.callbacks.Callback):
             img = Image.fromarray(x, mode=mode).convert('RGBA')
             img.save(preview_path)
             img.save(current_path)
-        max_h = max(r.shape[1] for r in ret)
-        max_w = max(r.shape[2] for r in ret)
         x = np.asarray(np.clip(np.asarray(ret) * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
         save_image(x, "gen")
 
@@ -152,6 +158,12 @@ def train(
                 embeddings_layer_names=None,
                 embeddings_metadata=None,
             ),
+            GeneratorVisualizer(
+                preview_iteration_interval=preview_iteration_interval,
+                test_iterator=test_iterator,
+                n=10,
+                out_dir=out_dir,
+            )
         ]
     )
 
