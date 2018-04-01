@@ -59,7 +59,7 @@ def main():
 
     enc = Encoder(in_ch=4)        
     dec = Decoder(out_ch=4)        
-    dis = Discriminator(in_ch=4, out_ch=4)
+    dis = Discriminator(in_ch=4, out_ch=4, flat=True if args.downscale else False)
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current

@@ -127,11 +127,11 @@ class Decoder(chainer.Chain):
         return h
 
 class Discriminator(chainer.Chain):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, flat=False):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0_0'] = CBR(in_ch, 32, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
-        layers['c0_1'] = CBR(out_ch, 32, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
+        layers['c0_0'] = CBR(in_ch, 32, bn=False, sample=('none-5' if flat else 'down'), activation=F.leaky_relu, dropout=False)
+        layers['c0_1'] = CBR(out_ch, 32, bn=False, sample=('none-5' if flat else 'down'), activation=F.leaky_relu, dropout=False)
         layers['c1'] = CBR(64, 128, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c2'] = CBR(128, 256, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c3'] = CBR(256, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
