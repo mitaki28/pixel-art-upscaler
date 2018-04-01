@@ -181,35 +181,23 @@ def pix2pix(w, in_ch, out_ch):
     y_real_dis = dis([x_in, x_real])
     y_fake_dis = dis([x_in, x_fake])
 
-    return (
-        keras.models.Model(
-            [x_in, x_real],
-            [x_fake_gen, y_fake_gen, y_real_dis, y_fake_dis],
-        ),
-        keras.models.Model(
-            [x_in],
-            [x_fake],
-        ),
+    return keras.models.Model(
+        [x_in, x_real],
+        [x_fake_gen, y_fake_gen, y_real_dis, y_fake_dis],
     )
 
-def gen_loss_l1(lam1=100):
-    def f(y_true, y_pred):
-        return lam1 * keras.losses.mean_absolute_error(y_true, y_pred)
-    return f
+lam1 = 100
+lam2 = 1
 
-def gen_loss_adv(lam2=1):
-    def f(_, y_pred):
-        t = lam2 * K.mean(K.softplus(y_pred), axis=-1)
-        return t
-    return f
+def gen_loss_l1(y_true, y_pred):
+    return lam1 * keras.losses.mean_absolute_error(y_true, y_pred)
 
-def dis_loss_real():
-    def f(_, y_pred):
-        return K.mean(K.softplus(y_pred), axis=-1)
-    return f
+def gen_loss_adv(_, y_pred):
+    return lam2 * K.mean(K.softplus(y_pred), axis=-1)
 
-def dis_loss_fake():
-    def f(_, y_pred):
-        return K.mean(K.softplus(-y_pred), axis=-1)
-    return f
+def dis_loss_real(_, y_pred):
+    return K.mean(K.softplus(y_pred), axis=-1)
+
+def dis_loss_fake(_, y_pred):
+    return K.mean(K.softplus(-y_pred), axis=-1)
 
