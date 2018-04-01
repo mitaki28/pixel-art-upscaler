@@ -64,7 +64,8 @@ class CBR(chainer.Chain):
             layers['c'] = NNConvolution2D(ch0, ch1, 2, 3, 1, 1, initialW=w)
         elif sample=='none':
             layers['c'] = L.Convolution2D(ch0, ch1, 3, 1, 1, initialW=w)
-            # layers['c'] = PixelShuffler(ch0, ch1, 2, initialW=w)
+        elif sample=='none-5':
+            layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
         else:
             assert False, 'unknown sample {}'.format(sample)
         if bn:
@@ -129,8 +130,8 @@ class Discriminator(chainer.Chain):
     def __init__(self, in_ch, out_ch):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0_0'] = CBR(in_ch, 32, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c0_1'] = CBR(out_ch, 32, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c0_0'] = CBR(in_ch, 32, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
+        layers['c0_1'] = CBR(out_ch, 32, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
         layers['c1'] = CBR(64, 128, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c2'] = CBR(128, 256, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c3'] = CBR(256, 512, bn=True, sample='down', activation=F.leaky_relu, dropout=False)

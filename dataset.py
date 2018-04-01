@@ -1,14 +1,16 @@
 import numpy as np
 
-from random import random
-from PIL import Image
+import random
+from PIL import Image, ImageFilter
 from chainer.dataset import dataset_mixin
 from pathlib import Path
+from chainercv.transforms import center_crop
 from chainercv.transforms import random_crop
 from chainercv.transforms import random_flip
 from chainercv.transforms import resize_contain
 from chainercv.transforms import resize
 from chainercv.utils import read_image
+
 
 def random_crop_by_2(img, C_label, pH, pW, fH, fW):
     y = np.random.randint(pH)
@@ -63,10 +65,17 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
             img = convert_image(f)
         with Image.open(self.labelDir/filename) as f:
             label = convert_image(f)
+        C, H, W = label.shape
+        py, px = random.choice([(0, 0), (1, 0), (0, 1)])
+        label[:,1::2,1::2] = label[:,py::2,px::2]
         C_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
         t = argument_image(t, C_label, self.charSize, self.fineSize)
-        t = resize(t, (64, 64), Image.NEAREST)
+        
+        label, img = t[:C_label], t[C_label:]
+        t = np.concatenate([label, img], axis=0)
+
+        t = resize(t, (64, 64), Image.NEAREST)                
         return t[:C_label], t[C_label:]
     
 class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
@@ -95,11 +104,39 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
         img = random_crop(img, (64, 64))
         img = random_flip(img, x_random=True)
 
-        label = resize(resize(img, (32, 32), Image.NEAREST), (64, 64), Image.NEAREST)
-        img = resize(img, (64, 64), Image.NEAREST)
+        label = resize(resize(img, (32, 32), Image.NEAREST), (128, 128), Image.NEAREST)
+        img = resize(img, (128, 128), Image.NEAREST)
         return label, img
 
 class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
+
+    def __init__(self, labelDir):
+        self.labelDir = Path(labelDir)
+        self.filepaths = list(self.labelDir.glob("*.png"))
+        print("{} images loaded".format(len(self.filepaths)))
+
     def get_example(self, i):
-        label, img = super().get_example(i)
-        return img, label
+        with Image.open(str(self.filepaths[i])) as f:
+            label = convert_image(f)
+        img = label.copy()
+        C, H, W = label.shape
+        # py, px = random.choice([(0, 0), (1, 0), (0, 1)])
+        # label[:,1::2,1::2] = label[:,py::2,px::2]
+
+        C_label = label.shape[0]
+        t = np.concatenate([label, img], axis=0)
+
+
+        # random background color
+        # bgMask = ((-label + 1.0) / 2.0)[3,:,:]
+        # bgMaskR = bgMask * (random() * 2.0 - 1.0)
+        # bgMaskG = bgMask * (random() * 2.0 - 1.0)
+        # bgMaskB = bgMask * (random() * 2.0 - 1.0)
+        # label[0,:,:] += bgMaskR
+        # label[1,:,:] += bgMaskG
+        # label[2,:,:] += bgMaskB
+
+        t = center_crop(t, (64, 64))
+        t = random_flip(t, x_random=True)
+        t = resize(t, (64, 64), Image.NEAREST)
+        return t[:C_label], t[C_label:]
