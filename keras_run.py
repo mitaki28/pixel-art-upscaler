@@ -68,104 +68,116 @@ class GeneratorVisualizer(keras.callbacks.Callback):
         img.save(preview_path)
         img.save(current_path)
 
-def train(
-    dataset_dir,
-    epochs=200,
-    size=64,
-    in_ch=4,
-    out_ch=4,
-    batch_size=4,
-    preview_iteration_interval=100,
-    snapshot_epoch_interval=1,
-    checkpoint=None,
-    initial_epoch=0,
-    out_dir='result/'
-):
-    dataset_dir = Path(dataset_dir)
-    out_dir = Path(out_dir)
-    train_dataset = dataset.AutoUpscaleDataset(str(dataset_dir/'main'))
-    train_iterator = chainer.iterators.SerialIterator(
-        train_dataset,
-        batch_size=batch_size,
-    )
-    
-    test_iterator = chainer.iterators.SerialIterator(
-        dataset.AutoUpscaleDataset(str(dataset_dir/'test')),
-        batch_size=1,
-    )
+class Pix2Pix(object):
+    def __init__(self,
+        size=64,
+        in_ch=4,
+        out_ch=4,
+        checkpoint=None,
+    ):
+        self.size = 64
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.pix2pix = keras_model.pix2pix(size, in_ch, out_ch)
+        if checkpoint is not None:
+            self.pix2pix.load_weights(checkpoint)
 
-    def _dataset():
-        for i, batch in enumerate(train_iterator):
-            x_in = np.asarray([b[0] for b in batch]).astype('f')
-            x_real = np.asarray([b[1] for b in batch]).astype('f')
-            x_in = x_in.transpose((0, 2, 3, 1))
-            x_real = x_real.transpose((0, 2, 3, 1))            
-            yield [
-                [
-                    x_in,
-                    x_real,
-                ],
-                [
-                    x_real,
-                    np.zeros((batch_size, size // 8, size // 8, 1)),
-                    np.zeros((batch_size, size // 8, size // 8, 1)),
-                    np.zeros((batch_size, size // 8, size // 8, 1)),
-                ],
+    def export_generator(self, out_path):
+        self.pix2pix.get_layer('Generator').save(out_path)
+
+    def export_discriminator(self, out_path):
+        self.pix2pix.get_layer('Discriminator').save(out_path)
+
+    def train(self,
+        dataset_dir,
+        epochs=200,
+        batch_size=4,
+        preview_iteration_interval=100,
+        snapshot_epoch_interval=1,
+        initial_epoch=0,
+        out_dir='result/'
+    ):
+        dataset_dir = Path(dataset_dir)
+        out_dir = Path(out_dir)
+        train_dataset = dataset.AutoUpscaleDataset(str(dataset_dir/'main'))
+        train_iterator = chainer.iterators.SerialIterator(
+            train_dataset,
+            batch_size=batch_size,
+        )
+        test_iterator = chainer.iterators.SerialIterator(
+            dataset.AutoUpscaleDataset(str(dataset_dir/'test')),
+            batch_size=1,
+        )
+
+        def _dataset():
+            for i, batch in enumerate(train_iterator):
+                x_in = np.asarray([b[0] for b in batch]).astype('f')
+                x_real = np.asarray([b[1] for b in batch]).astype('f')
+                x_in = x_in.transpose((0, 2, 3, 1))
+                x_real = x_real.transpose((0, 2, 3, 1))            
+                yield [
+                    [
+                        x_in,
+                        x_real,
+                    ],
+                    [
+                        x_real,
+                        np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
+                        np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
+                        np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
+                    ],
+                ]
+        self.pix2pix.compile(
+            keras.optimizers.Adam(
+                lr=0.0002,
+                beta_1=0.5,
+                beta_2=0.999,
+                epsilon=1e-8,
+                decay=0.0,
+                amsgrad=False,
+            ),
+            [
+                keras_model.gen_loss_l1,
+                keras_model.gen_loss_adv,
+                keras_model.dis_loss_real,
+                keras_model.dis_loss_fake,        
+            ],
+        )
+        self.pix2pix.fit_generator(
+            _dataset(),
+            math.ceil(len(train_dataset) / batch_size),
+            epochs=epochs,
+            initial_epoch=initial_epoch,
+            verbose=1,
+            callbacks=[
+                keras.callbacks.ModelCheckpoint(
+                    str(out_dir/'model_{epoch:02d}.hdf5'),
+                    monitor='val_loss',
+                    verbose=0,
+                    save_best_only=False,
+                    save_weights_only=True,
+                    mode='auto',
+                    period=1,
+                ),
+                keras.callbacks.TensorBoard(
+                    log_dir=str(out_dir/'logs'),
+                    histogram_freq=0,
+                    batch_size=None,
+                    write_graph=True,
+                    write_grads=False,
+                    write_images=False,
+                    embeddings_freq=0,
+                    embeddings_layer_names=None,
+                    embeddings_metadata=None,
+                ),
+                GeneratorVisualizer(
+                    preview_iteration_interval=preview_iteration_interval,
+                    test_iterator=test_iterator,
+                    n=10,
+                    out_dir=out_dir,
+                )
             ]
-    pix2pix = keras_model.pix2pix(size, in_ch, out_ch)
-    if checkpoint is not None:
-        pix2pix.load_weights(checkpoint)
-    pix2pix.compile(
-        keras.optimizers.Adam(
-            lr=0.0002,
-            beta_1=0.5,
-            beta_2=0.999,
-            epsilon=1e-8,
-            decay=0.0,
-            amsgrad=False,
-        ),
-        [
-            keras_model.gen_loss_l1,
-            keras_model.gen_loss_adv,
-            keras_model.dis_loss_real,
-            keras_model.dis_loss_fake,        
-        ],
-    )
-    pix2pix.fit_generator(
-        _dataset(),
-        math.ceil(len(train_dataset) / batch_size),
-        epochs=epochs,
-        initial_epoch=initial_epoch,
-        verbose=1,
-        callbacks=[
-            keras.callbacks.ModelCheckpoint(
-                str(out_dir/'model_{epoch:02d}.hdf5'),
-                monitor='val_loss',
-                verbose=0,
-                save_best_only=False,
-                save_weights_only=True,
-                mode='auto',
-                period=1,
-            ),
-            keras.callbacks.TensorBoard(
-                log_dir=str(out_dir/'logs'),
-                histogram_freq=0,
-                batch_size=None,
-                write_graph=True,
-                write_grads=False,
-                write_images=False,
-                embeddings_freq=0,
-                embeddings_layer_names=None,
-                embeddings_metadata=None,
-            ),
-            GeneratorVisualizer(
-                preview_iteration_interval=preview_iteration_interval,
-                test_iterator=test_iterator,
-                n=10,
-                out_dir=out_dir,
-            )
-        ]
-    )
+        )
 
 if __name__ == '__main__':
-    fire.Fire()
+    fire.Fire(Pix2Pix)
