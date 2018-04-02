@@ -110,7 +110,7 @@ def main():
             
             if args.downscale:
                 cW, cH = converted_img.size
-                pW, pH = (cW - oW * 2, cH - oH * 2)
+                pW, pH = (cW - oW, cH - oH)
                 postprocessed_img = converted_img.crop((
                     pW // 2,
                     pH // 2,
