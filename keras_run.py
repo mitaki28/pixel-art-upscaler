@@ -5,6 +5,8 @@ from PIL import Image
 import fire
 import math
 import os
+import sys
+import json
 
 import keras
 import keras_model
@@ -29,6 +31,7 @@ class GeneratorVisualizer(keras.callbacks.Callback):
     def on_batch_end(self, step, logs={}):
         if self.iteration % self.preview_iteration_interval != 0:
             return
+        step += 1
 
         n_pattern = 3
         n_images = self.n * n_pattern
@@ -68,25 +71,39 @@ class GeneratorVisualizer(keras.callbacks.Callback):
         img.save(preview_path)
         img.save(current_path)
 
+
+class Pix2PixCheckpoint(keras.callbacks.Callback):
+    def __init__(self, out_dir, period=1):
+        self.out_dir = Path(out_dir)
+        self.period = period
+
+    def on_epoch_end(self, epoch, logs=None):
+        epoch += 1
+        if epoch % self.period == 0:
+            self.model.get_layer('Generator').save_weights(
+                str(self.out_dir/'gen_{epoch:05d}.h5'.format(epoch=epoch)),
+            )
+            self.model.get_layer('Discriminator').save_weights(
+                str(self.out_dir/'dis_{epoch:05d}.h5'.format(epoch=epoch)),
+            )
+
 class Pix2Pix(object):
     def __init__(self,
         size=64,
         in_ch=4,
         out_ch=4,
-        checkpoint=None,
+        base_ch=64,
+        generator=None,
+        discriminator=None,
     ):
         self.size = 64
         self.in_ch = in_ch
         self.out_ch = out_ch
-        self.pix2pix = keras_model.pix2pix(size, in_ch, out_ch)
-        if checkpoint is not None:
-            self.pix2pix.load_weights(checkpoint)
-
-    def export_generator(self, out_path):
-        self.pix2pix.get_layer('Generator').save(out_path)
-
-    def export_discriminator(self, out_path):
-        self.pix2pix.get_layer('Discriminator').save(out_path)
+        self.pix2pix = keras_model.pix2pix(size, in_ch, out_ch, base_ch)
+        if generator is not None:
+            self.pix2pix.get_layer('Generator').load_weights(generator)
+        if discriminator is not None:
+            self.pix2pix.get_layer('Discriminator').load_weights(discriminator)
 
     def train(self,
         dataset_dir,
@@ -96,9 +113,12 @@ class Pix2Pix(object):
         snapshot_epoch_interval=1,
         initial_epoch=0,
         out_dir='result/'
-    ):
-        dataset_dir = Path(dataset_dir)
+    ):        
         out_dir = Path(out_dir)
+        out_dir.mkdir(exist_ok=True, parents=True)
+        with (out_dir/'args').open('w') as f:
+            f.write(json.dumps(sys.argv, sort_keys=True, indent=4))
+        dataset_dir = Path(dataset_dir)
         train_dataset = dataset.AutoUpscaleDataset(str(dataset_dir/'main'))
         train_iterator = chainer.iterators.SerialIterator(
             train_dataset,
@@ -150,15 +170,19 @@ class Pix2Pix(object):
             initial_epoch=initial_epoch,
             verbose=1,
             callbacks=[
-                keras.callbacks.ModelCheckpoint(
-                    str(out_dir/'model_{epoch:02d}.hdf5'),
-                    monitor='val_loss',
-                    verbose=0,
-                    save_best_only=False,
-                    save_weights_only=True,
-                    mode='auto',
-                    period=1,
+                Pix2PixCheckpoint(
+                    out_dir,
+                    snapshot_epoch_interval,
                 ),
+                # keras.callbacks.ModelCheckpoint(
+                #     str(out_dir/'model_{epoch:02d}.hdf5'),
+                #     monitor='val_loss',
+                #     verbose=0,
+                #     save_best_only=False,
+                #     save_weights_only=True,
+                #     mode='auto',
+                #     period=1,
+                # ),
                 keras.callbacks.TensorBoard(
                     log_dir=str(out_dir/'logs'),
                     histogram_freq=0,

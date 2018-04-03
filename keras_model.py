@@ -49,11 +49,11 @@ def up_cbr(h, filters, dropout=False):
     h = keras.layers.core.Activation('relu')(h)
     return h
 
-def generator(w, in_ch, out_ch):
+def generator(w, in_ch, out_ch, base_ch):
     x = keras.layers.Input(shape=(w, w, in_ch))
 
     h = keras.layers.Conv2D(
-        filters=64,
+        filters=base_ch,
         kernel_size=5,
         strides=1,
         padding='same',
@@ -63,7 +63,7 @@ def generator(w, in_ch, out_ch):
     
     h0 = leaky_relu(h)
     h = keras.layers.Conv2D(
-        filters=128,
+        filters=base_ch * 2,
         kernel_size=3,
         strides=1,
         padding='same',
@@ -73,33 +73,33 @@ def generator(w, in_ch, out_ch):
     h = batchnorm(h)
     h1 = leaky_relu(h)
 
-    h2 = down_cbr(h1, 256)
-    h3 = down_cbr(h2, 512)
-    h4 = down_cbr(h3, 512)
-    h5 = down_cbr(h4, 512)
-    h6 = down_cbr(h5, 512)
-    h7 = down_cbr(h6, 512)
+    h2 = down_cbr(h1, base_ch * 4)
+    h3 = down_cbr(h2, base_ch * 8)
+    h4 = down_cbr(h3, base_ch * 8)
+    h5 = down_cbr(h4, base_ch * 8)
+    h6 = down_cbr(h5, base_ch * 8)
+    h7 = down_cbr(h6, base_ch * 8)
 
-    h = up_cbr(h7, 512, dropout=True)
+    h = up_cbr(h7, base_ch * 8, dropout=True)
 
     h = keras.layers.concatenate([h, h6])
-    h = up_cbr(h, 512, dropout=True)
+    h = up_cbr(h, base_ch * 8, dropout=True)
 
     h = keras.layers.concatenate([h, h5])
-    h = up_cbr(h, 512, dropout=True)
+    h = up_cbr(h, base_ch * 8, dropout=True)
 
     h = keras.layers.concatenate([h, h4])
-    h = up_cbr(h, 512, dropout=False)
+    h = up_cbr(h, base_ch * 8, dropout=False)
 
     h = keras.layers.concatenate([h, h3])
-    h = up_cbr(h, 256, dropout=False)
+    h = up_cbr(h, base_ch * 4, dropout=False)
 
     h = keras.layers.concatenate([h, h2])
-    h = up_cbr(h, 128, dropout=False)
+    h = up_cbr(h, base_ch * 2, dropout=False)
 
     h = keras.layers.concatenate([h, h1])
     h = keras.layers.Conv2D(
-        filters=64,
+        filters=base_ch,
         kernel_size=3,
         strides=1,
         padding='same',
@@ -121,11 +121,13 @@ def generator(w, in_ch, out_ch):
     )(h)
     return x, h
 
-def discriminator(w, ch0, ch1):
+def discriminator(w, ch0, ch1, base_ch):
+    assert base_ch % 2 == 0
+
     x0 = keras.layers.Input(shape=(w, w, ch0))
     x1 = keras.layers.Input(shape=(w, w, ch1))
     h0 = keras.layers.Conv2D(
-        filters=32,
+        filters=base_ch // 2,
         kernel_size=5,
         strides=1,
         padding='same',
@@ -136,7 +138,7 @@ def discriminator(w, ch0, ch1):
     h0 = leaky_relu(h0)
 
     h1 = keras.layers.Conv2D(
-        filters=32,
+        filters=base_ch // 2,
         kernel_size=5,
         strides=1,
         padding='same',
@@ -146,9 +148,9 @@ def discriminator(w, ch0, ch1):
     h1 = batchnorm(h1)
     h1 = leaky_relu(h1)
 
-    h = down_cbr(keras.layers.concatenate([h0, h1]), 128)
-    h = down_cbr(h, 256)
-    h = down_cbr(h, 512)
+    h = down_cbr(keras.layers.concatenate([h0, h1]), base_ch * 2)
+    h = down_cbr(h, base_ch * 4)
+    h = down_cbr(h, base_ch * 8)
     h = keras.layers.Conv2D(
         filters=1,
         kernel_size=3,
@@ -159,9 +161,9 @@ def discriminator(w, ch0, ch1):
     )(h)
     return x0, x1, h
 
-def pix2pix(w, in_ch, out_ch):
-    gen_in, gen_out = generator(w, in_ch, out_ch)
-    dis_in_0, dis_in_1, dis_out = discriminator(w, in_ch, out_ch)
+def pix2pix(w, in_ch, out_ch, base_ch):
+    gen_in, gen_out = generator(w, in_ch, out_ch, base_ch)
+    dis_in_0, dis_in_1, dis_out = discriminator(w, in_ch, out_ch, base_ch)
 
     gen = keras.models.Model(gen_in, gen_out, 'Generator')
     gen_frozen = keras.models.Model(gen_in, gen_out, 'Generator-Frozen')
