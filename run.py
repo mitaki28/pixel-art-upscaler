@@ -8,12 +8,11 @@ from chainer import training
 from chainer.training import extensions
 from chainer import serializers
 
-from net import Encoder
-from net import Decoder
-
-from visualizer import convert_image
+from net import Generator
 
 from pathlib import Path
+
+from util import chw_array_to_img, img_to_chw_array
 
 def transparent_background(img):
     background_color = img.getpixel((0, 0))
@@ -31,6 +30,15 @@ def pad_power_of_2(img, minimum_size=32):
     ret = Image.new('RGBA', (s, s))
     ret.paste(img, ((s - W) // 2, (s - H) // 2))
     return ret
+
+def convert_image(img, gen):
+    xp = gen.xp
+    
+    x = img_to_chw_array(img)
+    x_in = Variable(x.reshape(1, *x.shape))
+    x_out, _ = gen(x_in)
+
+    return chw_array_to_img(chainer.cuda.to_cpu(x_out.data)[0])
 
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
@@ -84,6 +92,7 @@ def main():
                 preprocessed_img = img
             else:
                 preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
+            
             converted_img = convert_image(preprocessed_img, gen).convert('RGBA')
             
             if args.downscale:

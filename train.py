@@ -53,7 +53,7 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    enc = Generator(in_ch=4, out_ch=4, base_ch=args.baes_ch)
+    enc = Generator(in_ch=4, out_ch=4, base_ch=args.base_ch)
     dis = Discriminator(in_ch=4, out_ch=4, base_ch=args.base_ch)
     
     if args.gpu >= 0:
@@ -134,7 +134,7 @@ def main():
         'epoch', 'iteration', 'enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
-    trainer.extend(out_image(updater, gen, 8, args.out), trigger=preview_interval)
+    trainer.extend(out_image(gen, 8, args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 
     if args.resume:
