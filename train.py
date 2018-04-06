@@ -25,6 +25,8 @@ def main():
                         help='Number of images in each mini-batch')
     parser.add_argument('--epoch', '-e', type=int, default=200,
                         help='Number of sweeps over the dataset to train')
+    parser.add_argument('--base_ch', type=int, default=64,
+                        help='base channel size of hidden layer')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--dataset', '-i', default='./image/fsm',
@@ -51,8 +53,8 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    enc = Generator(in_ch=4, out_ch=4)
-    dis = Discriminator(in_ch=4, out_ch=4)
+    enc = Generator(in_ch=4, out_ch=4, base_ch=args.baes_ch)
+    dis = Discriminator(in_ch=4, out_ch=4, base_ch=args.base_ch)
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
