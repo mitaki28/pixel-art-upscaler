@@ -121,6 +121,10 @@ def main():
         gen, 'gen_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
+    trainer.extend(extensions.snapshot_object(
+        dis, 'dis_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
     trainer.extend(extensions.LogReport(trigger=preview_interval))
     trainer.extend(extensions.PlotReport(
         ['enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',],
