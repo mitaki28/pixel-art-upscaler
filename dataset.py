@@ -13,10 +13,10 @@ from chainercv.utils import read_image
 
 from util import img_to_chw_array, downscale_random_nearest_neighbor
 
-def random_crop_by_2(img, C_label, pH, pW, fH, fW):
+def random_crop_by_2(img, c_label, pH, pW, fH, fW):
     y = np.random.randint(pH)
     x = np.random.randint(pW)
-    label, data = img[:C_label], img[C_label:]
+    label, data = img[:c_label], img[c_label:]
     label = label[:,y:y+fH,x:x+fW]
     y_data = (y // 2) * 2
     x_data = (x // 2) * 2
@@ -26,13 +26,13 @@ def random_crop_by_2(img, C_label, pH, pW, fH, fW):
 # TODO padding, resize は全部 Dataset 側でやるようにしたい
 class PairDownscaleDataset(dataset_mixin.DatasetMixin):
 
-    def __init__(self, dataDir, labelDir, charSize=(48, 48), fineSize=(64, 64)):
-        self.charSize = charSize
-        self.fineSize = fineSize
-        self.dataDir = Path(dataDir)
-        self.labelDir = Path(labelDir)
-        data_names = set([path.name for path in self.dataDir.glob("*.png")])
-        label_names = set([path.name for path in self.labelDir.glob("*.png")])
+    def __init__(self, data_dir, label_dir, char_size=(48, 48), fine_size=(64, 64)):
+        self.char_size = char_size
+        self.fine_size = fine_size
+        self.data_dir = Path(data_dir)
+        self.label_dir = Path(label_dir)
+        data_names = set([path.name for path in self.data_dir.glob("*.png")])
+        label_names = set([path.name for path in self.label_dir.glob("*.png")])
         self.filenames = list(data_names & label_names)
         print(len(self.filenames), 'loaded')
         print(len(label_names - data_names), 'ignored from label')
@@ -41,14 +41,14 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
     def __len__(self):
         return len(self.filenames)
 
-    def argument_image(self, img, C_label, is_crop_random=True, is_flip_random=True):
-        cW, cH = self.charSize
-        fW, fH = self.fineSize
+    def argument_image(self, img, c_label, is_crop_random=True, is_flip_random=True):
+        cW, cH = self.char_size
+        fW, fH = self.fine_size
         pW, pH = ((fW - cW), (fH - cH))
         if is_crop_random:
             assert pW >= 0 and pW % 2 == 0 and pH >= 0 and pH % 2 == 0
             img = resize_contain(img, (fH + pH, fW + pW), img[:,0,0])
-            img = random_crop_by_2(img, C_label, pH, pW, fH, fW)
+            img = random_crop_by_2(img, c_label, pH, pW, fH, fW)
         else:
             img = resize_contain(img, (fH, fW), img[:,0,0])
         if is_flip_random:
@@ -58,25 +58,25 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
     # return (label, img)
     def get_example(self, i):
         filename = self.filenames[i]
-        with Image.open(self.dataDir/filename) as f:
+        with Image.open(self.data_dir/filename) as f:
             img = img_to_chw_array(f)
-        with Image.open(self.labelDir/filename) as f:
+        with Image.open(self.label_dir/filename) as f:
             label = img_to_chw_array(f)
         C, H, W = label.shape
         py, px = random.choice([(0, 0), (1, 0), (0, 1)])
         label[:,1::2,1::2] = label[:,py::2,px::2]
         
-        C_label = label.shape[0]
+        c_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
-        t = self.argument_image(t, C_label, self.charSize, self.fineSize)
+        t = self.argument_image(t, c_label, self.char_size, self.fine_size)
 
         t = resize(t, (64, 64), Image.NEAREST)                
-        return t[:C_label], t[C_label:]
+        return t[:c_label], t[c_label:]
     
 class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
-    def __init__(self, labelDir, random_nn=True):
-        self.labelDir = Path(labelDir)
-        self.filepaths = list(self.labelDir.glob("*.png"))
+    def __init__(self, label_dir, random_nn=True):
+        self.label_dir = Path(label_dir)
+        self.filepaths = list(self.label_dir.glob("*.png"))
         self.random_nn = random_nn
         print("{} images loaded".format(len(self.filepaths)))
     
@@ -99,9 +99,9 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
 
 class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
 
-    def __init__(self, labelDir):
-        self.labelDir = Path(labelDir)
-        self.filepaths = list(self.labelDir.glob("*.png"))
+    def __init__(self, label_dir):
+        self.label_dir = Path(label_dir)
+        self.filepaths = list(self.label_dir.glob("*.png"))
         print("{} images loaded".format(len(self.filepaths)))
 
     def get_example(self, i):
@@ -112,10 +112,10 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
         # py, px = random.choice([(0, 0), (1, 0), (0, 1)])
         # label[:,1::2,1::2] = label[:,py::2,px::2]
 
-        C_label = label.shape[0]
+        c_label = label.shape[0]
         t = np.concatenate([label, img], axis=0)
 
         t = center_crop(t, (64, 64))
         t = random_flip(t, x_random=True)
         t = resize(t, (64, 64), Image.NEAREST)
-        return t[:C_label], t[C_label:]
+        return t[:c_label], t[c_label:]
