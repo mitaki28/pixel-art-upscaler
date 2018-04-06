@@ -49,6 +49,7 @@ def main():
     parser.add_argument('--downscale', action='store_true', default=False,
                         help='enable downscale learning',
     )
+    parser.add_argument('--use_random_nn_downscale', action='store_true', default=False)
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -81,7 +82,7 @@ def main():
         print('# upscale learning with automatically generated images')
         train_d = AutoUpscaleDataset(
             "{}/main".format(args.dataset),
-            random_nn=True,
+            random_nn=args.use_random_nn_downscale,
         )
         test_d = AutoUpscaleDataset(
             "{}/test".format(args.dataset),        
