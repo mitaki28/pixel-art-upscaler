@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-
-# python train_facade.py -g 0 -i ./facade/base --out result_facade --snapshot_interval 10000
-
 import matplotlib
 matplotlib.use('Agg')
 
@@ -17,9 +13,8 @@ from chainerui.utils import save_args
 from chainerui.extensions import CommandsExtension
 
 from net import Discriminator
-from net import Encoder
-from net import Decoder
-from updater import FacadeUpdater
+from net import Generator
+from updater import Pix2PixUpdater
 
 from dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
 from visualizer import out_image
@@ -38,8 +33,6 @@ def main():
                         help='Directory to output the result')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
-    parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed')
     parser.add_argument('--snapshot_interval', type=int, default=1000,
                         help='Interval of snapshot')
     parser.add_argument('--display_interval', type=int, default=10,
@@ -58,14 +51,12 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    enc = Encoder(in_ch=4)        
-    dec = Decoder(out_ch=4)        
+    enc = Generator(in_ch=4, out_ch=4)
     dis = Discriminator(in_ch=4, out_ch=4)
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-        enc.to_gpu()  # Copy the model to the GPU
-        dec.to_gpu()
+        gen.to_gpu()  # Copy the model to the GPU
         dis.to_gpu()
 
     # Setup an optimizer
@@ -74,8 +65,8 @@ def main():
         optimizer.setup(model)
         optimizer.add_hook(chainer.optimizer.WeightDecay(0.00001), 'hook_dec')
         return optimizer
-    opt_enc = make_optimizer(enc)
-    opt_dec = make_optimizer(dec)
+    opt_enc = make_optimizer(gen.enc)
+    opt_dec = make_optimizer(gen.dec)
     opt_dis = make_optimizer(dis)
 
     if not args.downscale:
@@ -102,8 +93,8 @@ def main():
     test_iter = chainer.iterators.SerialIterator(test_d, args.batchsize)
 
     # Set up a trainer
-    updater = FacadeUpdater(
-        models=(enc, dec, dis),
+    updater = Pix2PixUpdater(
+        models=(gen, dis),
         iterator={
             'main': train_iter,
             'test': test_iter,
@@ -122,13 +113,12 @@ def main():
     
     trainer.extend(extensions.snapshot(
         filename='snapshot_iter_{.updater.iteration}.npz'),
-                   trigger=snapshot_interval)
+        trigger=snapshot_interval,
+    )
     trainer.extend(extensions.snapshot_object(
-        enc, 'enc_iter_{.updater.iteration}.npz'), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        dec, 'dec_iter_{.updater.iteration}.npz'), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        dis, 'dis_iter_{.updater.iteration}.npz'), trigger=snapshot_interval)
+        gen, 'gen_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
     trainer.extend(extensions.LogReport(trigger=preview_interval))
     trainer.extend(extensions.PlotReport(
         ['enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',],
@@ -138,7 +128,7 @@ def main():
         'epoch', 'iteration', 'enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
-    trainer.extend(out_image(updater, enc, dec, 8, args.seed, args.out), trigger=preview_interval)
+    trainer.extend(out_image(updater, gen, 8, args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 
     if args.resume:

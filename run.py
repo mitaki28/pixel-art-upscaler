@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-
-# python train_facade.py -g 0 -i ./facade/base --out result_facade --snapshot_interval 10000
-
-from __future__ import print_function
 import argparse
 import os
 from PIL import Image
@@ -46,8 +41,7 @@ def main():
     parser.add_argument('--out', '-o', type=str, default='out/converted', help='path to output directory')
     parser.add_argument('--compare', action='store_true', default=False, help='scale output image to half size or not')
 
-    parser.add_argument('--model_dir', help='path to model directory')
-    parser.add_argument('--iteration', type=str, help='iteration of load model')
+    parser.add_argument('--model', help='path to generator model')
     parser.add_argument('--downscale', action='store_true', default=False,
                         help='enable downscale learning',
     )
@@ -58,30 +52,14 @@ def main():
     print('GPU: {}'.format(args.gpu))
     print('')
 
-    # Set up a neural network to train
-    enc = Encoder(in_ch=4)
-    dec = Decoder(out_ch=4)
+    gen = Generator(in_ch=4, out_ch=4)
     
     if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-        enc.to_gpu()  # Copy the model to the GPU
-        dec.to_gpu()
+        chainer.cuda.get_device(args.gpu).use()
+        gen.to_gpu()
 
-    chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(args.iteration), enc)
-    chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(args.iteration), dec)
-
-    # hack: add-hook fix for broken batch normalization
-    xp = enc.xp
-    for i in range(1, 8):
-        cbr = enc['c{}'.format(i)]
-        if xp.isnan(cbr.batchnorm.avg_var[-1]):
-            print('enc.c{} is broken'.format(i))
-            cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
-    for i in range(0, 7):
-        cbr = dec['c{}'.format(i)]
-        if xp.isnan(cbr.batchnorm.avg_var[-1]):
-            print('dec.c{} is broken'.format(i))
-            cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
+    chainer.serializers.load_npz(model_path, gen)
+    gen.fix_broken_batchnorm()
 
     out_dir = Path(args.out)
     single_dir = out_dir/'single'
@@ -106,7 +84,7 @@ def main():
                 preprocessed_img = img
             else:
                 preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
-            converted_img = convert_image(preprocessed_img, enc, dec).convert('RGBA')
+            converted_img = convert_image(preprocessed_img, gen).convert('RGBA')
             
             if args.downscale:
                 cW, cH = converted_img.size
