@@ -77,11 +77,19 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
 
         t = resize(t, (64, 64), Image.NEAREST)                
         return t[:C_label], t[C_label:]
+
+def downscale_random_nearest_neighbor(img):
+    c, h, w = img.shape
+    img = img.reshape((c, h // 2, 2, w // 2, 2)).transpose((1, 3, 2, 4, 0)).reshape((h // 2, w // 2, 4, c))
+    hw_idx = np.indices((h // 2, w // 2))
+    c_idx = np.random.randint(0, 4, img.shape[:2])
+    return img[hw_idx[0], hw_idx[1], c_idx].transpose((2, 0, 1))
     
 class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
-    def __init__(self, labelDir):
+    def __init__(self, labelDir, random_nn=True):
         self.labelDir = Path(labelDir)
         self.filepaths = list(self.labelDir.glob("*.png"))
+        self.random_nn = random_nn
         print("{} images loaded".format(len(self.filepaths)))
     
     def __len__(self):
@@ -104,7 +112,10 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
         img = random_crop(img, (64, 64))
         img = random_flip(img, x_random=True)
 
-        label = resize(resize(img, (32, 32), Image.NEAREST), (64, 64), Image.NEAREST)
+        if self.random_nn:
+            label = resize(downscale_random_nearest_neighbor(img), (64, 64), Image.NEAREST)
+        else:
+            label = resize(resize(img, (32, 32), Image.NEAREST), (64, 64), Image.NEAREST)
         img = resize(img, (64, 64), Image.NEAREST)
         return label, img
 
