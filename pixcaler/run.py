@@ -8,11 +8,10 @@ from chainer import training
 from chainer.training import extensions
 from chainer import serializers
 
-from net import Generator
-
 from pathlib import Path
 
-from util import chw_array_to_img, img_to_chw_array
+from pixcaler.net import Generator
+from pixcaler.util import chw_array_to_img, img_to_chw_array
 
 def transparent_background(img):
     background_color = img.getpixel((0, 0))

@@ -7,7 +7,7 @@ import chainer
 import chainer.cuda
 from chainer import Variable
 from chainercv.transforms import resize, resize_contain
-from util import chw_array_to_img
+from pixcaler.util import chw_array_to_img
 
 def out_image_base(gen, n, dst):
     @chainer.training.make_extension()

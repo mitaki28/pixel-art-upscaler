@@ -1,9 +1,10 @@
 import numpy as np
-
-import random
-from PIL import Image, ImageFilter
-from chainer.dataset import dataset_mixin
 from pathlib import Path
+import random
+
+from PIL import Image
+
+from chainer.dataset import dataset_mixin
 from chainercv.transforms import center_crop
 from chainercv.transforms import random_crop
 from chainercv.transforms import random_flip
@@ -11,7 +12,7 @@ from chainercv.transforms import resize_contain
 from chainercv.transforms import resize
 from chainercv.utils import read_image
 
-from util import img_to_chw_array, downscale_random_nearest_neighbor
+from pixcaler.util import img_to_chw_array, downscale_random_nearest_neighbor
 
 def random_crop_by_2(img, c_source, pH, pW, fH, fW):
     y = np.random.randint(pH)

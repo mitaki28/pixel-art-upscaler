@@ -1,6 +1,6 @@
 import fire
 import chainer
-import net
+import pixcaler.net
 from pathlib import Path
 
 class GeneratorMerge(object):

@@ -12,12 +12,11 @@ from chainer import serializers
 from chainerui.utils import save_args
 from chainerui.extensions import CommandsExtension
 
-from net import Discriminator
-from net import Generator
-from updater import Pix2PixUpdater
-
-from dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
-from visualizer import out_image
+from pixcaler.net import Discriminator
+from pixcaler.net import Generator
+from pixcaler.updater import Pix2PixUpdater
+from pixcaler.dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
+from pixcaler.visualizer import out_image
 
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
