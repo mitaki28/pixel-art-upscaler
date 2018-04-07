@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-
-# python train_facade.py -g 0 -i ./facade/base --out result_facade --snapshot_interval 10000
-
-from __future__ import print_function
 import argparse
 import os
 from PIL import Image
@@ -13,12 +8,11 @@ from chainer import training
 from chainer.training import extensions
 from chainer import serializers
 
-from net import Encoder
-from net import Decoder
-
-from visualizer import convert_image
+from net import Generator
 
 from pathlib import Path
+
+from util import chw_array_to_img, img_to_chw_array
 
 def transparent_background(img):
     background_color = img.getpixel((0, 0))
@@ -37,6 +31,15 @@ def pad_power_of_2(img, minimum_size=32):
     ret.paste(img, ((s - W) // 2, (s - H) // 2))
     return ret
 
+def convert_image(img, gen):
+    xp = gen.xp
+    
+    x = img_to_chw_array(img)
+    x_in = Variable(x.reshape(1, *x.shape))
+    x_out, _ = gen(x_in)
+
+    return chw_array_to_img(chainer.cuda.to_cpu(x_out.data)[0])
+
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
     parser.add_argument('images', help='path to input images', metavar='image', type=str, nargs='*',)
@@ -46,39 +49,25 @@ def main():
     parser.add_argument('--out', '-o', type=str, default='out/converted', help='path to output directory')
     parser.add_argument('--compare', action='store_true', default=False, help='scale output image to half size or not')
 
-    parser.add_argument('--model_dir', help='path to model directory')
-    parser.add_argument('--iter', type=str, help='iteration of load model')
+    parser.add_argument('--model', help='path to generator model')
+    parser.add_argument('--downscale', action='store_true', default=False,
+                        help='enable downscale learning',
+    )
+    
     args = parser.parse_args()
 
     model_dir = Path(args.model_dir)
     print('GPU: {}'.format(args.gpu))
     print('')
 
-    # Set up a neural network to train
-    enc = Encoder(in_ch=4)
-    dec = Decoder(out_ch=4)
+    gen = Generator(in_ch=4, out_ch=4)
     
     if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-        enc.to_gpu()  # Copy the model to the GPU
-        dec.to_gpu()
-        dis.to_gpu()
+        chainer.cuda.get_device(args.gpu).use()
+        gen.to_gpu()
 
-    chainer.serializers.load_npz(model_dir/'enc_iter_{}.npz'.format(args.iter), enc)
-    chainer.serializers.load_npz(model_dir/'dec_iter_{}.npz'.format(args.iter), dec)
-
-    # hack: add-hook fix for broken batch normalization
-    xp = enc.xp
-    for i in range(1, 8):
-        cbr = enc['c{}'.format(i)]
-        if xp.isnan(cbr.batchnorm.avg_var[-1]):
-            print('enc.c{} is broken'.format(i))
-            cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
-    for i in range(0, 7):
-        cbr = dec['c{}'.format(i)]
-        if xp.isnan(cbr.batchnorm.avg_var[-1]):
-            print('dec.c{} is broken'.format(i))
-            cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
+    chainer.serializers.load_npz(model_path, gen)
+    gen.fix_broken_batchnorm()
 
     out_dir = Path(args.out)
     single_dir = out_dir/'single'
@@ -99,17 +88,31 @@ def main():
             img = img.convert('RGBA')
             img = transparent_background(img)
             img = pad_power_of_2(img)
-            preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
-            converted_img = convert_image(preprocessed_img, enc, dec).convert('RGBA')
+            if args.downscale:
+                preprocessed_img = img
+            else:
+                preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
             
-            cW, cH = converted_img.size
-            pW, pH = (cW - oW * 2, cH - oH * 2)
-            postprocessed_img = converted_img.crop((
-                pW // 2,
-                pH // 2,
-                pW // 2 + oW * 2,
-                pH // 2 + oH * 2
-            ))
+            converted_img = convert_image(preprocessed_img, gen).convert('RGBA')
+            
+            if args.downscale:
+                cW, cH = converted_img.size
+                pW, pH = (cW - oW, cH - oH)
+                postprocessed_img = converted_img.crop((
+                    pW // 2,
+                    pH // 2,
+                    pW // 2 + oW,
+                    pH // 2 + oH,
+                ))                
+            else:
+                cW, cH = converted_img.size
+                pW, pH = (cW - oW * 2, cH - oH * 2)
+                postprocessed_img = converted_img.crop((
+                    pW // 2,
+                    pH // 2,
+                    pW // 2 + oW * 2,
+                    pH // 2 + oH * 2
+                ))
             postprocessed_img.save(single_path)
             print(image_path, '->', single_path)
 

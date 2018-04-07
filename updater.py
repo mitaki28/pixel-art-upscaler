@@ -14,11 +14,11 @@ from chainer import function
 from chainer.utils import type_check
 import numpy
 
-class FacadeUpdater(chainer.training.StandardUpdater):
+class Pix2PixUpdater(chainer.training.StandardUpdater):
 
     def __init__(self, *args, **kwargs):
-        self.enc, self.dec, self.dis = kwargs.pop('models')
-        super(FacadeUpdater, self).__init__(*args, **kwargs)
+        self.gen, self.dis = kwargs.pop('models')
+        super().__init__(*args, **kwargs)
 
     def loss_func_adv_dis_fake_ls(self, y_fake):
         return 0.5 * F.mean(y_fake ** 2)
@@ -65,8 +65,8 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         dec_optimizer = self.get_optimizer('dec')
         dis_optimizer = self.get_optimizer('dis')
         
-        enc, dec, dis = self.enc, self.dec, self.dis
-        xp = enc.xp
+        gen, dis = self.gen, self.dis
+        xp = gen.xp
 
         batch = self.get_iterator('main').next()
         batchsize = len(batch)
@@ -74,17 +74,17 @@ class FacadeUpdater(chainer.training.StandardUpdater):
         x_in = Variable(xp.asarray([b[0] for b in batch]).astype('f'))
         t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
         
-        z = enc(x_in)
-        x_out = dec(z)
+
+        x_out, zs = gen(x_in)
 
         y_fake = dis(x_in, x_out)
         y_real = dis(x_in, t_out)
 
+        enc_optimizer.update(self.loss_gen.enc, enc, x_out, t_out, y_fake)
+        for z in zs:
+            z.unchain_backward()
+        dec_optimizer.update(self.loss_gen.dec, dec, x_out, t_out, y_fake)
 
-        enc_optimizer.update(self.loss_gen, enc, x_out, t_out, y_fake)
-        for z_ in z:
-            z_.unchain_backward()
-        dec_optimizer.update(self.loss_gen, dec, x_out, t_out, y_fake)
         x_in.unchain_backward()
         x_out.unchain_backward()
         dis_optimizer.update(self.loss_dis, dis, y_real, y_fake)
