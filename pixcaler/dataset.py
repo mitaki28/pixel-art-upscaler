@@ -63,9 +63,9 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
             source = img_to_chw_array(f)
         with Image.open(self.target_dir/filename) as f:
             target = img_to_chw_array(f)
-        #C, H, W = source.shape
-        #py, px = random.choice([(0, 0), (1, 0), (0, 1)])
-        #source[:,1::2,1::2] = source[:,py::2,px::2]
+        C, H, W = source.shape
+        py, px = random.choice([(0, 0), (1, 0), (0, 1)])
+        source[:,1::2,1::2] = source[:,py::2,px::2]
         
         c_source = source.shape[0]
         t = np.concatenate([source, target], axis=0)
