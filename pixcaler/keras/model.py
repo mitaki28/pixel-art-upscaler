@@ -31,25 +31,35 @@ def down_cbr(h, filters):
     h = leaky_relu(h)
     return h
 
-def up_cbr(h, filters, dropout=False):
-    h = keras.layers.UpSampling2D(
-        size=(2, 2),
-    )(h)
-    h = keras.layers.Conv2D(
-        filters=filters,
-        kernel_size=3,
-        strides=1,
-        padding='same',
-        kernel_initializer=random_normal(),
-        kernel_regularizer=weight_decay(),               
-    )(h)
+def up_cbr(h, filters, dropout=False, use_resize_conv=False):
+    if use_resize_conv:
+        h = keras.layers.UpSampling2D(
+            size=(2, 2),
+        )(h)
+        h = keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=3,
+            strides=1,
+            padding='same',
+            kernel_initializer=random_normal(),
+            kernel_regularizer=weight_decay(),               
+        )(h)
+    else:
+        h = keras.layers.Conv2DTranspose(
+            filters=filters,
+            kernel_size=4,
+            strides=2,
+            padding='same',
+            kernel_initializer=random_normal(),
+            kernel_regularizer=weight_decay(),
+        )
     h = batchnorm(h)
     if dropout:
         h = keras.layers.Dropout(0.5)(h)
     h = keras.layers.core.Activation('relu')(h)
     return h
 
-def generator(w, in_ch, out_ch, base_ch):
+def generator(w, in_ch, out_ch, base_ch, use_resize_conv=False):
     x = keras.layers.Input(shape=(w, w, in_ch))
 
     h = keras.layers.Conv2D(
@@ -161,8 +171,8 @@ def discriminator(w, ch0, ch1, base_ch):
     )(h)
     return x0, x1, h
 
-def pix2pix(w, in_ch, out_ch, base_ch):
-    gen_in, gen_out = generator(w, in_ch, out_ch, base_ch)
+def pix2pix(w, in_ch, out_ch, base_ch, use_resize_conv=False):
+    gen_in, gen_out = generator(w, in_ch, out_ch, base_ch, use_resize_conv)
     dis_in_0, dis_in_1, dis_out = discriminator(w, in_ch, out_ch, base_ch)
 
     gen = keras.models.Model(gen_in, gen_out, 'Generator')
