@@ -17,20 +17,20 @@ class GeneratorMerge(object):
         if gen_path.exists():
             print("{} is already exists".format(gen_path))
             exit(-1)
-        gen = net.Generator(self.in_ch, self.out_ch, self.base_ch)
+        gen = pixcaler.net.Generator(self.in_ch, self.out_ch, self.base_ch)
         chainer.serializers.load_npz(str(enc_path), gen.enc)
         chainer.serializers.load_npz(str(dec_path), gen.dec)
         chainer.serializers.save_npz(str(gen_path), gen)
-        if clean:
+        if self.clean:
             enc_path.unlink()
             dec_path.unlink()
 
-    def by_iteration(self):
+    def by_iteration(self, model_dir, iteration):
         model_dir = Path(model_dir)
         enc_path = model_dir/'enc_iter_{}.npz'.format(iteration)
         dec_path = model_dir/'dec_iter_{}.npz'.format(iteration)
         gen_path = model_dir/'gen_iter_{}.npz'.format(iteration)
-        self.by_path(enc_path, dec_path, gen_path, in_ch, out_ch, base_ch)
+        self.by_path(enc_path, dec_path, gen_path)
 
 if __name__ == '__main__':
     fire.Fire(GeneratorMerge)

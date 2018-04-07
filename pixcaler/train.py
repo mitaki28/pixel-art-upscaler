@@ -19,31 +19,57 @@ from pixcaler.dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpsca
 from pixcaler.visualizer import out_image
 
 def main():
-    parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
-    parser.add_argument('--batchsize', '-b', type=int, default=1,
-                        help='Number of images in each mini-batch')
-    parser.add_argument('--epoch', '-e', type=int, default=200,
-                        help='Number of sweeps over the dataset to train')
-    parser.add_argument('--base_ch', type=int, default=64,
-                        help='base channel size of hidden layer')
-    parser.add_argument('--gpu', '-g', type=int, default=-1,
-                        help='GPU ID (negative value indicates CPU)')
-    parser.add_argument('--dataset', '-i', default='./image/fsm',
-                        help='Directory of image files.')
-    parser.add_argument('--out', '-o', default='result',
-                        help='Directory to output the result')
-    parser.add_argument('--resume', '-r', default='',
-                        help='Resume the training from snapshot')
-    parser.add_argument('--snapshot_interval', type=int, default=1000,
-                        help='Interval of snapshot')
-    parser.add_argument('--display_interval', type=int, default=10,
-                        help='Interval of displaying log to console')
-    parser.add_argument('--preview_interval', type=int, default=100,
-                        help='Interval of previewing generated image')
-    parser.add_argument('--downscale', action='store_true', default=False,
-                        help='enable downscale learning',
+    parser = argparse.ArgumentParser(
+        description='chainer implementation of pix2pix',
     )
-    parser.add_argument('--use_random_nn_downscale', action='store_true', default=False)
+    parser.add_argument(
+        '--batchsize', '-b', type=int, default=1,
+        help='Number of images in each mini-batch',
+    )
+    parser.add_argument(
+        '--epoch', '-e', type=int, default=200,
+        help='Number of sweeps over the dataset to train',
+    )
+    parser.add_argument(
+        '--base_ch', type=int, default=64,
+        help='base channel size of hidden layer',
+    )
+    parser.add_argument(
+        '--gpu', '-g', type=int, default=-1,
+        help='GPU ID (negative value indicates CPU)',
+    )
+    parser.add_argument(
+        '--dataset', '-i', default='./image/fsm',
+        help='Directory of image files.',
+    )
+    parser.add_argument(
+        '--out', '-o', default='result',
+        help='Directory to output the result',
+    )
+    parser.add_argument(
+        '--resume', '-r', default='',
+        help='Resume the training from snapshot',
+    )
+    parser.add_argument(
+        '--snapshot_interval', type=int, default=1000,
+        help='Interval of snapshot',
+    )
+    parser.add_argument(
+        '--display_interval', type=int, default=10,
+        help='Interval of displaying log to console',
+    )
+    parser.add_argument(
+        '--preview_interval', type=int, default=100,
+        help='Interval of previewing generated image',    
+    )
+    parser.add_argument(
+        '--downscale', action='store_true', default=False,
+        help='enable downscale learning',
+    )
+    parser.add_argument(
+        '--use_random_nn_downscale', action='store_true', default=False,
+        help='downscal by sampling 4-nearest pixel randomly',
+    )
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -52,7 +78,7 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    enc = Generator(in_ch=4, out_ch=4, base_ch=args.base_ch)
+    gen = Generator(in_ch=4, out_ch=4, base_ch=args.base_ch)
     dis = Discriminator(in_ch=4, out_ch=4, base_ch=args.base_ch)
     
     if args.gpu >= 0:

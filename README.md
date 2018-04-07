@@ -41,14 +41,14 @@ python tool/trim-chartip.py extract-fsm ../trim-chartip/src/fsm/**/*.png
 ### 学習
 1. 以下のコマンドを実行します
 ```
-python train.py -e 400
+python -m pixcaler.train -e 400
 ```
 
 ※以下は現時点で一番性能の良いモデルを生成したときの手順です。（実際には500000〜1000000イテレーションで切り替えても大丈夫そうな感じはします）
 
 1. 1900000 イテレーション回した後、手動で updater.py の lam1 の値を160に変更した上で、さらに以下のコマンドを実行します
 ```
-python train.py -e 400 -r result/snapshot_iter_1900000.npz
+python -m pixcaler.train -e 400 -r result/snapshot_iter_1900000.npz
 ```
 1. 2000000 イテレーションで停止します
 
@@ -62,7 +62,7 @@ python train.py -e 400 -r result/snapshot_iter_1900000.npz
 1. `model/enc_iter_{iteration}.npz`, `model/dec_iter_{iteration}.npz` のように、同じディレクトリの中に学習済みのモデル一式が置かれていることが前提です。iteration には学習のイテレーション回数（数値列）が入ります
 1. モデルが置かれているディレクトリを `/path/to/model`,  イテレーション回数を 1000000 として、以下のコマンドを実行します
 ```
-python run.py --model-dir=/path/to/model --iter=1000000 /path/to/image1.png /path/to/image2.png
+python -m pixcaler.run --model-dir=/path/to/model --iter=1000000 /path/to/image1.png /path/to/image2.png
 ```
 
 

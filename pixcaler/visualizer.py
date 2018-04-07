@@ -9,7 +9,7 @@ from chainer import Variable
 from chainercv.transforms import resize, resize_contain
 from pixcaler.util import chw_array_to_img
 
-def out_image_base(gen, n, dst):
+def out_image(gen, n, dst):
     @chainer.training.make_extension()
     def make_image(trainer):
         xp = gen.xp
@@ -37,7 +37,8 @@ def out_image_base(gen, n, dst):
             ret.append(t_out)
             ret.append(x_out)
         
-        x = x.reshape((rows, cols, C, H, W)).transpose((2, 0, 3, 1, 4)).reshape((C, rows*H, cols*W))
+        C, H, W = ret[0].shape
+        x = np.asarray(ret).reshape((rows, cols, C, H, W)).transpose((2, 0, 3, 1, 4)).reshape((C, rows*H, cols*W))
         
         preview_dir = '{}/preview'.format(dst)
         preview_path = preview_dir + '/image_{:0>8}.png'.format(trainer.updater.iteration)

@@ -76,10 +76,10 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         y_fake = dis(x_in, x_out)
         y_real = dis(x_in, t_out)
 
-        enc_optimizer.update(self.loss_gen.enc, enc, x_out, t_out, y_fake)
+        enc_optimizer.update(self.loss_gen, gen.enc, x_out, t_out, y_fake)
         for z in zs:
             z.unchain_backward()
-        dec_optimizer.update(self.loss_gen.dec, dec, x_out, t_out, y_fake)
+        dec_optimizer.update(self.loss_gen, gen.dec, x_out, t_out, y_fake)
 
         x_in.unchain_backward()
         x_out.unchain_backward()

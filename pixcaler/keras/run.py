@@ -99,7 +99,7 @@ class Pix2Pix(object):
         self.size = 64
         self.in_ch = in_ch
         self.out_ch = out_ch
-        self.pix2pix = keras_model.pix2pix(size, in_ch, out_ch, base_ch)
+        self.pix2pix = pixcaler.keras.model.pix2pix(size, in_ch, out_ch, base_ch)
 
     def _load_generator(self, generator):
         gen = self.pix2pix.get_layer('Generator')
@@ -114,7 +114,7 @@ class Pix2Pix(object):
         gen.save(str(out_path))
         if tfjs:
             import tensorflowjs as tfjs
-            tfjs.converters.save_keras_model(gen, out_path.parent)
+            tfjs.converters.save_pixcaler.keras.model(gen, out_path.parent)
         if kerasjs is not None:
             subprocess.check_call(['python', kerasjs, '-q', str(out_path)])
 
@@ -138,13 +138,13 @@ class Pix2Pix(object):
         with (out_dir/'args').open('w') as f:
             f.write(json.dumps(sys.argv, sort_keys=True, indent=4))
         dataset_dir = Path(dataset_dir)
-        train_dataset = dataset.AutoUpscaleDataset(str(dataset_dir/'main'))
+        train_dataset = pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'main'))
         train_iterator = chainer.iterators.SerialIterator(
             train_dataset,
             batch_size=batch_size,
         )
         test_iterator = chainer.iterators.SerialIterator(
-            dataset.AutoUpscaleDataset(str(dataset_dir/'test')),
+            pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'test')),
             batch_size=1,
         )
 
@@ -176,10 +176,10 @@ class Pix2Pix(object):
                 amsgrad=False,
             ),
             [
-                keras_model.gen_loss_l1,
-                keras_model.gen_loss_adv,
-                keras_model.dis_loss_real,
-                keras_model.dis_loss_fake,        
+                pixcaler.keras.model.gen_loss_l1,
+                pixcaler.keras.model.gen_loss_adv,
+                pixcaler.keras.model.dis_loss_real,
+                pixcaler.keras.model.dis_loss_fake,        
             ],
         )
         self.pix2pix.fit_generator(

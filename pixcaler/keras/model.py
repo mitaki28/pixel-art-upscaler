@@ -52,7 +52,7 @@ def up_cbr(h, filters, dropout=False, use_resize_conv=False):
             padding='same',
             kernel_initializer=random_normal(),
             kernel_regularizer=weight_decay(),
-        )
+        )(h)
     h = batchnorm(h)
     if dropout:
         h = keras.layers.Dropout(0.5)(h)
@@ -90,22 +90,22 @@ def generator(w, in_ch, out_ch, base_ch, use_resize_conv=False):
     h6 = down_cbr(h5, base_ch * 8)
     h7 = down_cbr(h6, base_ch * 8)
 
-    h = up_cbr(h7, base_ch * 8, dropout=True)
+    h = up_cbr(h7, base_ch * 8, dropout=True, use_resize_conv=use_resize_conv)
 
     h = keras.layers.concatenate([h, h6])
-    h = up_cbr(h, base_ch * 8, dropout=True)
+    h = up_cbr(h, base_ch * 8, dropout=True, use_resize_conv=use_resize_conv)
 
     h = keras.layers.concatenate([h, h5])
-    h = up_cbr(h, base_ch * 8, dropout=True)
+    h = up_cbr(h, base_ch * 8, dropout=True, use_resize_conv=use_resize_conv)
 
     h = keras.layers.concatenate([h, h4])
-    h = up_cbr(h, base_ch * 8, dropout=False)
+    h = up_cbr(h, base_ch * 8, dropout=False, use_resize_conv=use_resize_conv)
 
     h = keras.layers.concatenate([h, h3])
-    h = up_cbr(h, base_ch * 4, dropout=False)
+    h = up_cbr(h, base_ch * 4, dropout=False, use_resize_conv=use_resize_conv)
 
     h = keras.layers.concatenate([h, h2])
-    h = up_cbr(h, base_ch * 2, dropout=False)
+    h = up_cbr(h, base_ch * 2, dropout=False, use_resize_conv=use_resize_conv)
 
     h = keras.layers.concatenate([h, h1])
     h = keras.layers.Conv2D(

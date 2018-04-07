@@ -34,28 +34,45 @@ def convert_image(img, gen):
     xp = gen.xp
     
     x = img_to_chw_array(img)
-    x_in = Variable(x.reshape(1, *x.shape))
+    x_in = chainer.Variable(x.reshape(1, *x.shape))
     x_out, _ = gen(x_in)
 
     return chw_array_to_img(chainer.cuda.to_cpu(x_out.data)[0])
 
 def main():
     parser = argparse.ArgumentParser(description='chainer implementation of pix2pix')
-    parser.add_argument('images', help='path to input images', metavar='image', type=str, nargs='*',)
-
-    parser.add_argument('--input_dir', '-i')    
-    parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU ID (negative value indicates CPU)')
-    parser.add_argument('--out', '-o', type=str, default='out/converted', help='path to output directory')
-    parser.add_argument('--compare', action='store_true', default=False, help='scale output image to half size or not')
-
-    parser.add_argument('--model', help='path to generator model')
-    parser.add_argument('--downscale', action='store_true', default=False,
-                        help='enable downscale learning',
+    parser.add_argument(
+        'images', metavar='image', type=str, nargs='*',
+        help='path to input images', 
+    )
+    parser.add_argument(
+        '--input_dir', '-i', type=str,
+        help='directory containing input images (all png images in the directory are converted)'
+    )
+    parser.add_argument(
+        '--gpu', '-g', type=int, default=-1,
+        help='GPU ID (negative value indicates CPU)',
+    )
+    parser.add_argument(
+        '--out', '-o', type=str, default='out/image/converted',
+        help='path to output directory',
+    )
+    parser.add_argument(
+        '--compare', action='store_true', default=False,
+        help='output images for compare',
+    )
+    parser.add_argument(
+        '--generator', type=str, required=True,
+        help='path to generator model',
+    )
+    parser.add_argument(
+        '--mode', type=str, choices=('up', 'down'), required=True,
+        help='scaling mode',
     )
     
     args = parser.parse_args()
 
-    model_dir = Path(args.model_dir)
+    gen_path = Path(args.generator)
     print('GPU: {}'.format(args.gpu))
     print('')
 
@@ -65,15 +82,18 @@ def main():
         chainer.cuda.get_device(args.gpu).use()
         gen.to_gpu()
 
-    chainer.serializers.load_npz(model_path, gen)
+    chainer.serializers.load_npz(gen_path, gen)
     gen.fix_broken_batchnorm()
 
     out_dir = Path(args.out)
-    single_dir = out_dir/'single'
-    compare_dir = out_dir/'compare'
-
-    single_dir.mkdir(parents=True, exist_ok=True)
-    compare_dir.mkdir(parents=True, exist_ok=True)
+    if args.compare:
+        single_dir = out_dir/'single'
+        compare_dir = out_dir/'compare'
+        single_dir.mkdir(parents=True, exist_ok=True)
+        compare_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        single_dir = out_dir
+        single_dir.mkdir(parents=True, exist_ok=True)
 
     if args.input_dir is not None:
         image_paths = Path(args.input_dir).glob('*.png')
@@ -81,20 +101,22 @@ def main():
         image_paths = [Path(image_path_str) for image_path_str in args.images]        
     for image_path in image_paths:
         single_path = single_dir/image_path.name
-        compare_path = compare_dir/image_path.name
         with Image.open(image_path) as img:
             oW, oH = img.size
             img = img.convert('RGBA')
             img = transparent_background(img)
-            img = pad_power_of_2(img)
-            if args.downscale:
+            if args.mode == 'down':
+                img = pad_power_of_2(img, 64)
                 preprocessed_img = img
-            else:
+            elif args.mode == 'up':
+                img = pad_power_of_2(img, 32)
                 preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
+            else:
+                raise RuntimeError('Unknown mode: {}'.format(args.mode))
             
             converted_img = convert_image(preprocessed_img, gen).convert('RGBA')
             
-            if args.downscale:
+            if args.mode == 'down':
                 cW, cH = converted_img.size
                 pW, pH = (cW - oW, cH - oH)
                 postprocessed_img = converted_img.crop((
@@ -102,8 +124,11 @@ def main():
                     pH // 2,
                     pW // 2 + oW,
                     pH // 2 + oH,
-                ))                
-            else:
+                ))
+                postprocessed_img = postprocessed_img.resize(
+                    (oW // 2, oH // 2), Image.BOX,
+                )
+            elif args.mode == 'up':
                 cW, cH = converted_img.size
                 pW, pH = (cW - oW * 2, cH - oH * 2)
                 postprocessed_img = converted_img.crop((
@@ -112,10 +137,13 @@ def main():
                     pW // 2 + oW * 2,
                     pH // 2 + oH * 2
                 ))
+            else:
+                raise RuntimeError('Unknown mode: {}'.format(args.mode))
+
             postprocessed_img.save(single_path)
             print(image_path, '->', single_path)
-
             if args.compare:
+                compare_path = compare_dir/image_path.name
                 compare_img = Image.new('RGBA', (2 * cW, cH))
                 compare_img.paste(preprocessed_img, (0, 0))
                 compare_img.paste(converted_img, (cW, 0))

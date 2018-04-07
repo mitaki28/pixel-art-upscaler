@@ -23,9 +23,10 @@ Mako==1.0.7
 Markdown==2.6.11
 MarkupSafe==1.0
 matplotlib==2.2.2
-numpy==1.13.3
+numpy==1.14.2
 Pillow==5.0.0
 protobuf==3.5.1
+pydot==1.2.4
 pyparsing==2.2.0
 python-dateutil==2.7.0
 python-editor==1.0.3
@@ -34,8 +35,9 @@ PyYAML==3.12
 scipy==1.0.1
 six==1.11.0
 SQLAlchemy==1.2.5
-tensorboard==1.6.0
-tensorflow==1.6.0
+tensorboard==1.7.0
+tensorflow==1.7.0
+tensorflowjs==0.1.1
 termcolor==1.1.0
 tzlocal==1.5.1
 webdnn==1.2.2

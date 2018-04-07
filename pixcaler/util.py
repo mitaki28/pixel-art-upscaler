@@ -21,7 +21,7 @@ def chw_array_to_img(x):
     else:
         x = x.reshape((H, W, C))
     return Image.fromarray(
-        np.asarray(xp.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
+        np.asarray(np.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
     )
 
 def downscale_random_nearest_neighbor(img):
