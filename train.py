@@ -88,7 +88,7 @@ def main():
             "{}/main/label".format(args.dataset),            
         )
         test_d = AutoUpscaleDatasetReverse(
-            "{}/test".format(args.dataset),        
+            "{}/test".format(args.dataset),
         )
 
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)

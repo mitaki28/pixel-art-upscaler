@@ -70,14 +70,14 @@ class PairDownscaleDataset(dataset_mixin.DatasetMixin):
         t = np.concatenate([source, target], axis=0)
         t = self.argument_image(t, c_source, self.char_size, self.fine_size)
 
-        t = resize(t, (64, 64), Image.NEAREST)                
         return t[:c_source], t[c_source:]
     
 class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
-    def __init__(self, target_dir, random_nn=True):
+    def __init__(self, target_dir, random_nn=True, fine_size=64):
         self.target_dir = Path(target_dir)
         self.filepaths = list(self.target_dir.glob("*.png"))
         self.random_nn = random_nn
+        self.fine_size = fine_size
         print("{} images loaded".format(len(self.filepaths)))
     
     def __len__(self):
@@ -88,34 +88,24 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
         with Image.open(str(self.filepaths[i])) as f:
             target = img_to_chw_array(f)
 
-        target = random_crop(target, (64, 64))
+        target = random_crop(target, (self.fine_size, self.fine_size))
         target = random_flip(target, x_random=True)
         if self.random_nn:
-            source = resize(downscale_random_nearest_neighbor(target), (64, 64), Image.NEAREST)
+            source = resize(
+                downscale_random_nearest_neighbor(target),
+                (self.fine_size, self.fine_size), Image.NEAREST,
+            )
         else:
-            source = resize(resize(target, (32, 32), Image.NEAREST), (64, 64), Image.NEAREST)
-        target = resize(target, (64, 64), Image.NEAREST)
+            source = resize(
+                resize(
+                    target,
+                    (self.fine_size // 2, self.fine_size // 2), Image.NEAREST,
+                ),
+                (self.fine_size, self.fine_size), Image.NEAREST,
+            )
         return source, target
 
 class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
-
-    def __init__(self, target_dir):
-        self.target_dir = Path(target_dir)
-        self.filepaths = list(self.target_dir.glob("*.png"))
-        print("{} images loaded".format(len(self.filepaths)))
-
     def get_example(self, i):
-        with Image.open(str(self.filepaths[i])) as f:
-            source = img_to_chw_array(f)
-        img = source.copy()
-        C, H, W = source.shape
-        # py, px = random.choice([(0, 0), (1, 0), (0, 1)])
-        # source[:,1::2,1::2] = source[:,py::2,px::2]
-
-        c_source = source.shape[0]
-        t = np.concatenate([source, img], axis=0)
-
-        t = center_crop(t, (64, 64))
-        t = random_flip(t, x_random=True)
-        t = resize(t, (64, 64), Image.NEAREST)
-        return t[:c_source], t[c_source:]
+        source, target = super().get_example(i)
+        return target, source
