@@ -117,8 +117,8 @@ def main():
         )
 
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
-    test_iter = chainer.iterators.SerialIterator(test_d, args.batchsize)
-
+    test_iter = chainer.iterators.SerialIterator(test_d, 1)
+ 
     # Set up a trainer
     updater = Pix2PixUpdater(
         models=(gen, dis),
