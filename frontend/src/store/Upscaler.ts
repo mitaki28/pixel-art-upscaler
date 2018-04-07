@@ -4,6 +4,7 @@ import { Converter, ConversionError } from "./Converter";
 import * as Jimp from "jimp";
 import * as WebDNN from "webdnn";
 import * as KerasJS from "keras-js";
+import * as tf from '@tensorflow/tfjs';
 import SymbolicFloat32Array from "webdnn/symbolic_typed_array/symbolic_float32array";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { transparentBackgroundColor, adjustSizeToPowerOf2, imageToChwFloat32Array, chwFloat32ArrayToImage, imageToHwcFloat32Array, hwcFloat32ArrayToImage } from "../util/image";
@@ -105,7 +106,39 @@ export class KerasUpscaler extends Upscaler {
 
         let y: Float32Array;
         try {
-            y = (await this._model.predict({"input_1": x})).conv2d_16;
+            y = (await this._model.predict({"input_1": x})).output_gen;
+        } catch (e) {
+            return left(ConversionError.failedToConvert(e));
+        }
+        const convertedImage = hwcFloat32ArrayToImage(
+            y.map((v) => Math.min(Math.max(v * 127.5 + 127.5, 0.0), 255.0)),
+            4,
+            img.bitmap.width,
+            img.bitmap.height,
+        );
+        return right(convertedImage);
+    }
+}
+
+export class TfjsUpscaler extends Upscaler {
+
+    private _model: tf.Model;
+
+    constructor(model: tf.Model) {
+        super();
+        this._model = model;
+    }
+
+    @action.bound
+    async predict(img: Jimp.Jimp): Promise<Either<ConversionError, Jimp.Jimp>> {
+        const width = img.bitmap.width
+        const height = img.bitmap.height
+        const x = imageToHwcFloat32Array(img, 4).map((v) => v / 127.5 - 1.0);
+
+        let y: Float32Array;
+        try {
+            const tensor = ((await this._model.predict(tf.tensor(x, [height, width, 4]))) as Array<tf.Tensor<tf.Rank>>)[0];
+            y = (await tensor.flatten().data() as Float32Array);
         } catch (e) {
             return left(ConversionError.failedToConvert(e));
         }
@@ -199,9 +232,6 @@ export abstract class UpscalerLoader {
 
 
 export class WebDNNUpscalerLoader extends UpscalerLoader {
-    constructor() {
-        super();
-    }
     @action.bound
     protected load(): Promise<Upscaler> {
         return WebDNN.load("./model/webdnn").then((runner) => {
@@ -219,6 +249,15 @@ export class KerasUpscalerLoader extends UpscalerLoader {
         });
         return model.ready().then(() => {
             return new KerasUpscaler(model);
+        });
+    }
+}
+
+export class TfjsUpscalerLoader extends UpscalerLoader {
+    @action.bound
+    protected load(): Promise<Upscaler> {
+        return tf.loadModel('./model/tfjs/model.json').then((model) => {
+            return new TfjsUpscaler(model);
         });
     }
 } 

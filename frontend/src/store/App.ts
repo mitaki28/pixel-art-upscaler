@@ -1,4 +1,4 @@
-import { UpscalerLoader, UpscalerLoadingState, WebDNNUpscalerLoader } from "../store/Upscaler";
+import { UpscalerLoader, UpscalerLoadingState, WebDNNUpscalerLoader, TfjsUpscalerLoader, KerasUpscalerLoader } from "../store/Upscaler";
 import { UpscaleConversionList } from "./UpscaleConversion";
 import { action, computed, observable } from "mobx";
 import { generateRandomString } from "../util/random";
@@ -11,7 +11,7 @@ export class App {
     @observable private _isShowingAbout: boolean;
 
     constructor() {
-        this.upscalerLoader = new WebDNNUpscalerLoader();
+        this.upscalerLoader = new KerasUpscalerLoader();
         this.upscaleConversionList = new UpscaleConversionList();
         this._uploadKey = generateRandomString();
         this._isShowingAbout = false;

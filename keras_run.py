@@ -12,6 +12,7 @@ import keras
 import keras_model
 import dataset
 import chainer
+import subprocess
 
 class GeneratorVisualizer(keras.callbacks.Callback):
     def __init__(self, preview_iteration_interval, test_iterator, n, out_dir):
@@ -93,17 +94,28 @@ class Pix2Pix(object):
         in_ch=4,
         out_ch=4,
         base_ch=64,
-        generator=None,
-        discriminator=None,
     ):
         self.size = 64
         self.in_ch = in_ch
         self.out_ch = out_ch
         self.pix2pix = keras_model.pix2pix(size, in_ch, out_ch, base_ch)
-        if generator is not None:
-            self.pix2pix.get_layer('Generator').load_weights(generator)
-        if discriminator is not None:
-            self.pix2pix.get_layer('Discriminator').load_weights(discriminator)
+
+    def _load_generator(self, generator):
+        gen = self.pix2pix.get_layer('Generator')
+        gen.load_weights(generator)
+        return gen
+
+    def export_generator(self, generator, out_path, tfjs=False, kerasjs=None):
+        out_path = Path(out_path)
+        if out_path.exists():
+            raise RuntimeError('{} is already exists'.format(out_path))
+        gen = self._load_generator(generator)
+        gen.save(str(out_path))
+        if tfjs:
+            import tensorflowjs as tfjs
+            tfjs.converters.save_keras_model(gen, out_path.parent)
+        if kerasjs is not None:
+            subprocess.check_call(['python', kerasjs, '-q', str(out_path)])
 
     def train(self,
         dataset_dir,
@@ -112,8 +124,14 @@ class Pix2Pix(object):
         preview_iteration_interval=100,
         snapshot_epoch_interval=1,
         initial_epoch=0,
-        out_dir='result/'
-    ):        
+        out_dir='result/',
+        generator=None,
+        discriminator=None,
+    ):
+        if generator is not None:
+            self.pix2pix.get_layer('Generator').load_weights(generator)
+        if discriminator is not None:
+            self.pix2pix.get_layer('Discriminator').load_weights(discriminator)
         out_dir = Path(out_dir)
         out_dir.mkdir(exist_ok=True, parents=True)
         with (out_dir/'args').open('w') as f:
