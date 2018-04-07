@@ -40,5 +40,4 @@ tensorflow==1.7.0
 tensorflowjs==0.1.1
 termcolor==1.1.0
 tzlocal==1.5.1
-webdnn==1.2.2
 Werkzeug==0.12.2

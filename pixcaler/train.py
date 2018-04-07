@@ -63,8 +63,8 @@ def main():
         help='Interval of previewing generated image',    
     )
     parser.add_argument(
-        '--downscale', action='store_true', default=False,
-        help='enable downscale learning',
+        '--mode', required=True, choices=('up', 'down'),
+        help='training mode',
     )
     parser.add_argument(
         '--use_random_nn_downscale', action='store_true', default=False,
@@ -96,7 +96,7 @@ def main():
     opt_dec = make_optimizer(gen.dec)
     opt_dis = make_optimizer(dis)
 
-    if not args.downscale:
+    if args.mode == 'up':
         print('# upscale learning with automatically generated images')
         train_d = AutoUpscaleDataset(
             "{}/main".format(args.dataset),
@@ -106,11 +106,11 @@ def main():
             "{}/test".format(args.dataset),        
             random_nn=False,
         )
-    else:
+    elif args.mode == 'down':
         print('# downscale learning')
         train_d = PairDownscaleDataset(
-            "{}/main/train".format(args.dataset),
-            "{}/main/label".format(args.dataset),            
+            "{}/main/target".format(args.dataset),
+            "{}/main/source".format(args.dataset),            
         )
         test_d = AutoUpscaleDatasetReverse(
             "{}/test".format(args.dataset),

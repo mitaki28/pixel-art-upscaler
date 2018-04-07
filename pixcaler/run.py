@@ -33,9 +33,10 @@ def pad_power_of_2(img, minimum_size=32):
 def convert_image(img, gen):
     xp = gen.xp
     
-    x = img_to_chw_array(img)
+    x = xp.asarray(img_to_chw_array(img))
     x_in = chainer.Variable(x.reshape(1, *x.shape))
-    x_out, _ = gen(x_in)
+    with chainer.using_config('train', False), chainer.using_config('enable_back_prop', False):
+        x_out, _ = gen(x_in)
 
     return chw_array_to_img(chainer.cuda.to_cpu(x_out.data)[0])
 
@@ -66,7 +67,7 @@ def main():
         help='path to generator model',
     )
     parser.add_argument(
-        '--mode', type=str, choices=('up', 'down'), required=True,
+        '--mode', type=str, choices=('up', 'down', 'direct'), required=True,
         help='scaling mode',
     )
     
@@ -111,6 +112,8 @@ def main():
             elif args.mode == 'up':
                 img = pad_power_of_2(img, 32)
                 preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
+            elif args.mode == 'direct':
+                preprocessed_img = img
             else:
                 raise RuntimeError('Unknown mode: {}'.format(args.mode))
             
@@ -137,6 +140,8 @@ def main():
                     pW // 2 + oW * 2,
                     pH // 2 + oH * 2
                 ))
+            elif args.mode == 'direct':
+                postprocessed_img = converted_img
             else:
                 raise RuntimeError('Unknown mode: {}'.format(args.mode))
 
