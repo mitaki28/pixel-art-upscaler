@@ -124,7 +124,7 @@ def main():
  
     # Set up a trainer
     updater = Pix2PixUpdater(
-        models=(gen, dis),
+        model=pix2pix,
         iterator={
             'main': train_iter,
             'test': test_iter,
@@ -144,20 +144,20 @@ def main():
         trigger=snapshot_interval,
     )
     trainer.extend(extensions.snapshot_object(
-        gen, 'gen_iter_{.updater.iteration}.npz'),
+        pix2pix.gen, 'gen_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
     trainer.extend(extensions.snapshot_object(
-        dis, 'dis_iter_{.updater.iteration}.npz'),
+        pix2pix.dis, 'dis_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
     trainer.extend(extensions.LogReport(trigger=preview_interval))
     trainer.extend(extensions.PlotReport(
-        ['enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',],
+        ['main/gen/loss_adv', 'main/gen/loss_rec', 'main/gen/loss', 'main/dis/loss',],
         trigger=preview_interval,
     ))
     trainer.extend(extensions.PrintReport([
-        'epoch', 'iteration', 'enc/loss_adv', 'enc/loss_rec', 'enc/loss', 'dis/loss',
+        'epoch', 'iteration', 'main/gen/loss_adv', 'main/gen/loss_rec', 'main/gen/loss', 'main/dis/loss',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
     trainer.extend(out_image(gen, 8, args.out), trigger=preview_interval)

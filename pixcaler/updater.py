@@ -13,7 +13,7 @@ import numpy
 class Pix2PixUpdater(chainer.training.StandardUpdater):
 
     def __init__(self, *args, **kwargs):
-        self.gen, self.dis = kwargs.pop('models')
+        self.model = kwargs.pop('model')
         super().__init__(*args, **kwargs)
 
     def loss_func_adv_dis_fake_ls(self, y_fake):
@@ -56,7 +56,7 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
     def update_core(self):        
         optimizer = self.get_optimizer('main')
         
-        gen, dis = self.gen, self.dis
+        gen, dis = self.model.gen, self.model.dis
         xp = gen.xp
 
         batch = self.get_iterator('main').next()
@@ -66,17 +66,17 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
         
 
-        x_out, zs = gen(x_in)
+        x_out = gen(x_in)
 
         y_fake = dis(x_in, x_out)
         y_real = dis(x_in, t_out)
 
         gen.cleargrads()
-        dis.cleargrads()
-
         self.loss_gen(gen, x_out, t_out, y_fake).backward()
         x_in.unchain_backward()
         x_out.unchain_backward()
+
+        dis.cleargrads()        
         self.loss_dis(dis, y_real, y_fake).backward()
 
         optimizer.update()

@@ -36,7 +36,7 @@ def convert_image(img, gen):
     x = xp.asarray(img_to_chw_array(img))
     x_in = chainer.Variable(x.reshape(1, *x.shape))
     with chainer.using_config('train', False), chainer.using_config('enable_back_prop', False):
-        x_out, _ = gen(x_in)
+        x_out = gen(x_in)
 
     return chw_array_to_img(chainer.cuda.to_cpu(x_out.data)[0])
 

@@ -130,9 +130,7 @@ class Generator(chainer.Chain):
         )
 
     def __call__(self, x_in):
-        hs = self.enc(x_in)
-        x_out = self.dec(hs)
-        return (x_out, hs)
+        return self.dec(self.enc(x_in))
 
     def fix_broken_batchnorm(self):
         '''

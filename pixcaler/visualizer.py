@@ -28,7 +28,7 @@ def out_image(gen, n, dst):
 
             x_in = Variable(xp.asarray([b[0] for b in batch]).astype('f'))
             t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
-            x_out, _ = gen(x_in)
+            x_out = gen(x_in)
     
             x_in = chainer.cuda.to_cpu(x_in.data)[0,:]
             t_out = chainer.cuda.to_cpu(t_out.data)[0,:]
