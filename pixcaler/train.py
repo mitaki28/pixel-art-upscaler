@@ -70,6 +70,10 @@ def main():
         '--use_random_nn_downscale', action='store_true', default=False,
         help='downscal by sampling 4-nearest pixel randomly',
     )
+    parser.add_argument(
+        '--flat_discriminator', action='store_true', default=False,
+        help='(deprecated)',
+    )    
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -79,7 +83,7 @@ def main():
     print('')
 
     gen = Generator(in_ch=4, out_ch=4, base_ch=args.base_ch)
-    dis = Discriminator(in_ch=4, out_ch=4, base_ch=args.base_ch)
+    dis = Discriminator(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator)
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current

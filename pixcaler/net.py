@@ -151,7 +151,7 @@ class Generator(chainer.Chain):
                 cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)        
 
 class Discriminator(chainer.Chain):
-    def __init__(self, in_ch, out_ch, flat=False, base_ch=64):
+    def __init__(self, in_ch, out_ch, flat=True, base_ch=64):
         assert base_ch % 2 == 0
         layers = {}
         w = chainer.initializers.Normal(0.02)
