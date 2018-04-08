@@ -26,16 +26,13 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         return 0.5 * F.mean((y_fake - 1.0) ** 2)
 
     def loss_func_adv_dis_fake(self, y_fake):
-        batchsize,_,w,h = y_fake.data.shape
-        return F.sum(F.softplus(y_fake)) / batchsize / w / h
+        return F.mean(F.softplus(y_fake))
 
     def loss_func_adv_dis_real(self, y_real):
-        batchsize,_,w,h = y_real.data.shape
-        return F.sum(F.softplus(-y_real)) / batchsize / w / h
+        return F.mean(F.softplus(-y_real))
 
     def loss_func_adv_gen(self, y_fake):
-        batchsize,_,w,h = y_fake.data.shape
-        return F.sum(F.softplus(-y_fake)) / batchsize / w / h
+        return F.mean(F.softplus(-y_fake))
 
     def loss_func_rec_gen(self, x_in, x_out):
         return F.mean_absolute_error(x_out, x_in)
