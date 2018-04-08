@@ -54,9 +54,7 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         return loss
 
     def update_core(self):        
-        enc_optimizer = self.get_optimizer('enc')
-        dec_optimizer = self.get_optimizer('dec')
-        dis_optimizer = self.get_optimizer('dis')
+        optimizer = self.get_optimizer('main')
         
         gen, dis = self.gen, self.dis
         xp = gen.xp
@@ -73,14 +71,15 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         y_fake = dis(x_in, x_out)
         y_real = dis(x_in, t_out)
 
-        enc_optimizer.update(self.loss_gen, gen.enc, x_out, t_out, y_fake)
-        for z in zs:
-            z.unchain_backward()
-        dec_optimizer.update(self.loss_gen, gen.dec, x_out, t_out, y_fake)
+        gen.cleargrads()
+        dis.cleargrads()
 
+        self.loss_gen(gen, x_out, t_out, y_fake).backward()
         x_in.unchain_backward()
         x_out.unchain_backward()
-        dis_optimizer.update(self.loss_dis, dis, y_real, y_fake)
+        self.loss_dis(dis, y_real, y_fake).backward()
+
+        optimizer.update()
 
     
     def _debug(self, x, name):

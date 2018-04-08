@@ -13,7 +13,7 @@ from chainerui.utils import save_args
 from chainerui.extensions import CommandsExtension
 
 from pixcaler.net import Discriminator
-from pixcaler.net import Generator
+from pixcaler.net import Generator, Pix2Pix
 from pixcaler.updater import Pix2PixUpdater
 from pixcaler.dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
 from pixcaler.visualizer import out_image
@@ -82,8 +82,9 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    gen = Generator(in_ch=4, out_ch=4, base_ch=args.base_ch)
-    dis = Discriminator(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator)
+    pix2pix = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator)
+    gen = pix2pix.gen
+    dis = pix2pix.dis
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
@@ -96,9 +97,7 @@ def main():
         optimizer.setup(model)
         optimizer.add_hook(chainer.optimizer.WeightDecay(0.00001), 'hook_dec')
         return optimizer
-    opt_enc = make_optimizer(gen.enc)
-    opt_dec = make_optimizer(gen.dec)
-    opt_dis = make_optimizer(dis)
+    opt_pix2pix = make_optimizer(pix2pix)
 
     if args.mode == 'up':
         print('# upscale learning with automatically generated images')
@@ -131,9 +130,7 @@ def main():
             'test': test_iter,
         },
         optimizer={
-            'enc': opt_enc,
-            'dec': opt_dec, 
-            'dis': opt_dis,
+            'main': opt_pix2pix,
         },
         device=args.gpu)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
