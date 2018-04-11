@@ -87,14 +87,11 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         opt_dis.update()
 
 
-class CycleScalerUpdater(chainer.training.StandardUpdater):
+class CycleUpdater(chainer.training.StandardUpdater):
 
     def __init__(self, *args, **kwargs):
         self.upscaler = kwargs.pop('upscaler')
         self.downscaler = kwargs.pop('downscaler')
-        self.first = kwargs.pop('first')
-        self.switching_interval = kwargs.pop('switching_interval')
-        self.iter = 0
         super().__init__(*args, **kwargs)
 
     def loss_func_adv_dis_fake_ls(self, y_fake):
@@ -133,9 +130,6 @@ class CycleScalerUpdater(chainer.training.StandardUpdater):
         chainer.report({'loss_real': L1}, dis)
         chainer.report({'loss_fake': L2}, dis)
         return loss
-
-    def take_next_batch(self):
-        return x_l, x_s_nn, x_s
 
     def update_downscaler(self, x_s):
         opt_gen = self.get_optimizer('gen_down')
@@ -205,8 +199,7 @@ class CycleScalerUpdater(chainer.training.StandardUpdater):
 
 
     def update_core(self):
-        update_upscaler()
-        update_downscaler()
-        self.iter += 1
+        self.update_upscaler()
+        self.update_downscaler()
 
 
