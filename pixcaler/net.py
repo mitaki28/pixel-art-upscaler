@@ -169,7 +169,6 @@ class Discriminator(chainer.Chain):
         h = self.c4(h)
         return h
 
-# stub model for shareing optimizer
 class Pix2Pix(chainer.Chain):
     def __init__(self, in_ch, out_ch, flat=True, base_ch=64):
         super().__init__(

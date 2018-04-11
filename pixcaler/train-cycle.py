@@ -129,8 +129,12 @@ def main():
         optimizer.setup(model)
         optimizer.add_hook(chainer.optimizer.WeightDecay(0.00001), 'hook_dec')
         return optimizer
-    opt_upscaler = make_optimizer(upscaler)
-    opt_downscaler = make_optimizer(downscaler)
+    opt_gen_up = make_optimizer(upscaler.gen)
+    opt_dis_up = make_optimizer(upscaler.dis)
+
+    opt_gen_down = make_optimizer(downscaler.gen)
+    opt_dis_down = make_optimizer(downscaler.dis)
+
 
     train_l_d = AutoUpscaleDataset(
         "{}/trainA".format(args.dataset),
@@ -171,8 +175,10 @@ def main():
             'testB': train_l_iter,
         },
         optimizer={
-            'upscaler': opt_upscaler,
-            'downscaler': opt_downscaler,
+            'opt_gen_up': opt_gen_up,
+            'opt_dis_up': opt_dis_up,
+            'opt_gen_down': opt_gen_down,
+            'opt_dis_down': opt_dis_down,
         },
         device=args.gpu,
     )
@@ -199,14 +205,14 @@ def main():
             trigger=snapshot_interval,
         )
         logging_keys += [
-            'upscaler/gen/up:loss_adv',
-            'upscaler/gen/up:loss_rec',
-            'upscaler/gen/up_nn:loss_adv',
-            'upscaler/gen/up_nn:loss_rec',
-            'upscaler/dis/up:loss_real',
-            'upscaler/dis/up:loss_fake',
-            'upscaler/dis/up_nn:loss_real',
-            'upscaler/dis/up_nn:loss_fake',
+            'gen_up/up:loss_adv',
+            'gen_up/up:loss_rec',
+            'gen_up/up_nn:loss_adv',
+            'gen_up/up_nn:loss_rec',
+            'dis_up/up:loss_real',
+            'dis_up/up:loss_fake',
+            'dis_up/up_nn:loss_real',
+            'dis_up/up_nn:loss_fake',
         ]
     if args.mode in ['down']:
         trainer.extend(extensions.snapshot_object(
@@ -218,14 +224,14 @@ def main():
             trigger=snapshot_interval,
         )
         logging_keys += [
-            'downscaler/gen/up:loss_adv',
-            'downscaler/gen/up:loss_rec',
-            'downscaler/gen/down:loss_adv',
-            'downscaler/gen/down:loss_rec',
-            'downscaler/dis/up:loss_real',
-            'downscaler/dis/up:loss_fake',
-            'downscaler/dis/down:loss_real',
-            'downscaler/dis/down:loss_fake',
+            'gen_down/up:loss_adv',
+            'gen_down/up:loss_rec',
+            'gen_down/down:loss_adv',
+            'gen_down/down:loss_rec',
+            'dis_down/up:loss_real',
+            'dis_down/up:loss_fake',
+            'dis_down/down:loss_real',
+            'dis_down/down:loss_fake',
         ]
 
     trainer.extend(extensions.LogReport(trigger=preview_interval))

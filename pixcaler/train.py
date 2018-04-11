@@ -20,7 +20,7 @@ from pixcaler.visualizer import out_image
 
 def main():
     parser = argparse.ArgumentParser(
-        description='chainer implementation of pix2pix',
+        description='chainer implementation of model',
     )
     parser.add_argument(
         '--batchsize', '-b', type=int, default=1,
@@ -82,14 +82,13 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    pix2pix = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator)
-    gen = pix2pix.gen
-    dis = pix2pix.dis
+    model = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator)
+    gen = model.gen
+    dis = model.dis
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-        gen.to_gpu()  # Copy the model to the GPU
-        dis.to_gpu()
+        model.to_gpu()  # Copy the model to the GPU
 
     # Setup an optimizer
     def make_optimizer(model, alpha=0.0002, beta1=0.5):
@@ -97,7 +96,8 @@ def main():
         optimizer.setup(model)
         optimizer.add_hook(chainer.optimizer.WeightDecay(0.00001), 'hook_dec')
         return optimizer
-    opt_pix2pix = make_optimizer(pix2pix)
+    opt_gen = make_optimizer(gen)
+    opt_dis = make_optimizer(dis)
 
     if args.mode == 'up':
         print('# upscale learning with automatically generated images')
@@ -124,15 +124,17 @@ def main():
  
     # Set up a trainer
     updater = Pix2PixUpdater(
-        model=pix2pix,
+        model=model,
         iterator={
             'main': train_iter,
             'test': test_iter,
         },
         optimizer={
-            'main': opt_pix2pix,
+            'gen': opt_gen,
+            'dis': opt_dis,
         },
-        device=args.gpu)
+        device=args.gpu,
+    )
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
     snapshot_interval = (args.snapshot_interval, 'iteration')
@@ -144,20 +146,20 @@ def main():
         trigger=snapshot_interval,
     )
     trainer.extend(extensions.snapshot_object(
-        pix2pix.gen, 'gen_iter_{.updater.iteration}.npz'),
+        model.gen, 'gen_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
     trainer.extend(extensions.snapshot_object(
-        pix2pix.dis, 'dis_iter_{.updater.iteration}.npz'),
+        model.dis, 'dis_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
     trainer.extend(extensions.LogReport(trigger=preview_interval))
     trainer.extend(extensions.PlotReport(
-        ['main/gen/loss_adv', 'main/gen/loss_rec', 'main/gen/loss', 'main/dis/loss',],
+        ['gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',],
         trigger=preview_interval,
     ))
     trainer.extend(extensions.PrintReport([
-        'epoch', 'iteration', 'main/gen/loss_adv', 'main/gen/loss_rec', 'main/gen/loss', 'main/dis/loss',
+        'epoch', 'iteration', 'gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
     trainer.extend(out_image(gen, 8, args.out), trigger=preview_interval)

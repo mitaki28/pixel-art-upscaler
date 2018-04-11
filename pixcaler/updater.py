@@ -58,8 +58,9 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         return loss
 
     def update_core(self):        
-        optimizer = self.get_optimizer('main')
-        
+        opt_gen = self.get_optimizer('gen')
+        opt_dis = self.get_optimizer('dis')
+
         gen, dis = self.model.gen, self.model.dis
         xp = gen.xp
 
@@ -77,13 +78,13 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
 
         gen.cleargrads()
         self.loss_gen(gen, x_out, t_out, y_fake).backward()
+        opt_gen.update()
+
         x_in.unchain_backward()
         x_out.unchain_backward()
-
         dis.cleargrads()        
         self.loss_dis(dis, y_real, y_fake).backward()
-
-        optimizer.update()
+        opt_dis.update()
 
 
 class CycleScalerUpdater(chainer.training.StandardUpdater):
@@ -143,7 +144,8 @@ class CycleScalerUpdater(chainer.training.StandardUpdater):
         return x_l, x_s_nn, x_s
 
     def update_downscaler(self):
-        optimizer = self.get_optimizer('downscaler')
+        opt_gen = self.get_optimizer('gen_down')
+        opt_dis = self.get_optimizer('dis_down')
         
         xp = self.downscaler.xp
         x_l, x_s_nn, x_s = self.take_next_batch()
@@ -163,26 +165,29 @@ class CycleScalerUpdater(chainer.training.StandardUpdater):
         y_l = self.upscaler.dis(y_ls, y_l)
 
         self.downscaler.gen.cleargrads()
-
         loss_gen_down = self.loss_gen('down', self.downscaler.gen, x_sls, x_s, y_sls)
         loss_gen_up = self.loss_gen('up', self.downscaler.gen, x_lsl, x_l, y_lsl)
         loss_gen = loss_gen_down + loss_gen_up
         loss_gen.backward()
-        
+        self.upscaler.gen.cleargrads()
+        self.upscaler.dis.cleargrads()        
+        opt_gen.update()
+
         x_in.unchain_backward()
         x_out.unchain_backward()
 
         self.downscaler.dis.cleargrads()        
         loss_dis = self.loss_dis('down', self.downscaler.dis, y_s, y_sls)
         loss_dis.backward()
-
         self.upscaler.gen.cleargrads()
         self.upscaler.dis.cleargrads()
-        optimizer.update()
+        opt_dis.update()
+
 
     def update_upscaler(self):
-        optimizer = self.get_optimizer('upscaler')
-        
+        opt_gen = self.get_optimizer('gen_up')
+        opt_dis = self.get_optimizer('dis_up')
+
         xp = self.upscaler.xp
         x_l, x_s_nn, x_s = self.take_next_batch()
         
@@ -202,6 +207,9 @@ class CycleScalerUpdater(chainer.training.StandardUpdater):
         loss_gen_up_nn = self.loss_gen('up_nn', self.upscaler.gen, x_s_nn_l, x_s_nn, y_s_nn_l)
         loss_gen = loss_gen_up + loss_gen_up_nn
         loss_gen.backward()
+        self.downscaler.gen.cleargrads()
+        self.downscaler.dis.cleargrads()        
+        opt_gen.update()
         
         x_in.unchain_backward()
         x_out.unchain_backward()
@@ -211,10 +219,10 @@ class CycleScalerUpdater(chainer.training.StandardUpdater):
         loss_dis_up_nn = self.loss_dis('up_nn', self.downscaler.dis, y_l, y_s_nn_l)
         loss_dis = loss_dis_up + loss_dis_up_nn
         loss_dis.backward()
-
         self.downscaler.gen.cleargrads()
         self.downscaler.dis.cleargrads()
-        optimizer.update()
+        opt_dis.update()
+
 
     def update_core(self):
         switching_interval = self.switching_interval
