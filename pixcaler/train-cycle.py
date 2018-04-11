@@ -16,7 +16,7 @@ from pixcaler.net import Discriminator
 from pixcaler.net import Generator, Pix2Pix
 from pixcaler.updater import CycleUpdater
 from pixcaler.dataset import AutoUpscaleDataset, Single32Dataset
-from pixcaler.visualizer import out_image
+from pixcaler.visualizer import out_image_cycle
 
 def main():
     parser = argparse.ArgumentParser(
@@ -115,8 +115,6 @@ def main():
     updater = CycleUpdater(
         upscaler=upscaler,
         downscaler=downscaler,
-        switching_interval=switching_interval,
-        first=first,
         iterator={
             'main': train_l_iter,
             'trainB': train_s_iter,
@@ -143,45 +141,35 @@ def main():
     )
     
     logging_keys = []
-    # currenly, upscaler don't need to save in any case
-    if args.mode in []:
-        trainer.extend(extensions.snapshot_object(
-            upscaler.gen, 'gen_up_iter_{.updater.iteration}.npz'),
-            trigger=snapshot_interval,
-        )
-        trainer.extend(extensions.snapshot_object(
-            upscaler.dis, 'dis_up_iter_{.updater.iteration}.npz'),
-            trigger=snapshot_interval,
-        )
-        logging_keys += [
-            'gen_up/up:loss_adv',
-            'gen_up/up:loss_rec',
-            'gen_up/up_nn:loss_adv',
-            'gen_up/up_nn:loss_rec',
-            'dis_up/up:loss_real',
-            'dis_up/up:loss_fake',
-            'dis_up/up_nn:loss_real',
-            'dis_up/up_nn:loss_fake',
-        ]
-    if args.mode in ['down']:
-        trainer.extend(extensions.snapshot_object(
-            downscaler.gen, 'gen_down_iter_{.updater.iteration}.npz'),
-            trigger=snapshot_interval,
-        )
-        trainer.extend(extensions.snapshot_object(
-            downscaler.dis, 'dis_down_iter_{.updater.iteration}.npz'),
-            trigger=snapshot_interval,
-        )
-        logging_keys += [
-            'gen_down/up:loss_adv',
-            'gen_down/up:loss_rec',
-            'gen_down/down:loss_adv',
-            'gen_down/down:loss_rec',
-            'dis_down/up:loss_real',
-            'dis_down/up:loss_fake',
-            'dis_down/down:loss_real',
-            'dis_down/down:loss_fake',
-        ]
+    trainer.extend(extensions.snapshot_object(
+        upscaler.gen, 'gen_up_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
+    trainer.extend(extensions.snapshot_object(
+        upscaler.dis, 'dis_up_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
+    logging_keys += [
+        'gen_up/loss_adv',
+        'gen_up/loss_rec',
+        'dis_up/loss_real',
+        'dis_up/loss_fake',
+    ]
+
+    trainer.extend(extensions.snapshot_object(
+        downscaler.gen, 'gen_down_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
+    trainer.extend(extensions.snapshot_object(
+        downscaler.dis, 'dis_down_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
+    logging_keys += [
+        'gen_down/loss_adv',
+        'gen_down/loss_rec',
+        'dis_down/loss_real',
+        'dis_down/loss_fake',
+    ]
 
     trainer.extend(extensions.LogReport(trigger=preview_interval))
     trainer.extend(extensions.PlotReport(
@@ -192,7 +180,7 @@ def main():
         ['epoch', 'iteration'] + logging_keys,
     ), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
-    trainer.extend(out_image(gen, 8, args.out), trigger=preview_interval)
+    trainer.extend(out_image_cycle(upscaler.gen, downscaler.gen, 8, args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 
     if args.resume:
