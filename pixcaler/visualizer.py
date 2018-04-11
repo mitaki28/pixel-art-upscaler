@@ -23,8 +23,6 @@ def out_image(gen, n, dst):
         
         for it in range(n):
             batch = trainer.updater.get_iterator('test').next()
-            batchsize = len(batch)
-            assert batchsize == 1
 
             x_in = Variable(xp.asarray([b[0] for b in batch]).astype('f'))
             t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
