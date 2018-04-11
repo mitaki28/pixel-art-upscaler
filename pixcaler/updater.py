@@ -150,20 +150,16 @@ class CycleUpdater(chainer.training.StandardUpdater):
         y_s = self.downscaler.dis(x_sl, x_s)
 
         self.downscaler.gen.cleargrads()
-        loss_gen = self.loss_gen('down', self.downscaler.gen, x_sls, x_s, y_sls)
+        loss_gen = self.loss_gen(self.downscaler.gen, x_sls, x_s, y_sls)
         loss_gen.backward()
-        self.upscaler.gen.cleargrads()
-        self.upscaler.dis.cleargrads()        
         opt_gen.update()
 
         x_s.unchain_backward()
         x_sls.unchain_backward()
 
         self.downscaler.dis.cleargrads()        
-        loss_dis = self.loss_dis('down', self.downscaler.dis, y_s, y_sls)
+        loss_dis = self.loss_dis(self.downscaler.dis, y_s, y_sls)
         loss_dis.backward()
-        self.upscaler.gen.cleargrads()
-        self.upscaler.dis.cleargrads()
         opt_dis.update()
 
 
