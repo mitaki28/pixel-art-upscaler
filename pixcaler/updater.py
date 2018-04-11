@@ -186,7 +186,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
         x_s_nn.unchain_backward()
 
         self.upscaler.dis.cleargrads()        
-        loss_dis = self.loss_dis(self.downscaler.dis, y_l, y_s_nn_l)
+        loss_dis = self.loss_dis(self.upscaler.dis, y_l, y_s_nn_l)
         loss_dis.backward()
         opt_dis.update()
 
