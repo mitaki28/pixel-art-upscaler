@@ -55,7 +55,7 @@ def out_image(gen, n, dst):
 def out_image_cycle(gen_up, gen_down, n, dst):
     @chainer.training.make_extension()
     def make_image(trainer):
-        xp = gen.xp
+        xp = gen_up.xp
         n_pattern = 6
         n_images = n * n_pattern
 
