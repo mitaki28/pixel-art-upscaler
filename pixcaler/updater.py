@@ -132,8 +132,8 @@ class CycleUpdater(chainer.training.StandardUpdater):
         return loss
 
     def update_downscaler(self, x_s):
-        opt_gen = self.get_optimizer('gen_down')
-        opt_dis = self.get_optimizer('dis_down')
+        opt_gen = self.get_optimizer('opt_gen_down')
+        opt_dis = self.get_optimizer('opt_dis_down')
         
         xp = self.downscaler.xp
 
@@ -168,8 +168,8 @@ class CycleUpdater(chainer.training.StandardUpdater):
 
 
     def update_upscaler(self):
-        opt_gen = self.get_optimizer('gen_up')
-        opt_dis = self.get_optimizer('dis_up')
+        opt_gen = self.get_optimizer('opt_gen_up')
+        opt_dis = self.get_optimizer('opt_dis_up')
 
         xp = self.upscaler.xp
 
