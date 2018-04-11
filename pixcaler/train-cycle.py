@@ -122,10 +122,10 @@ def main():
             'testB': test_s_iter,
         },
         optimizer={
-            'opt_gen_up': opt_gen_up,
-            'opt_dis_up': opt_dis_up,
-            'opt_gen_down': opt_gen_down,
-            'opt_dis_down': opt_dis_down,
+            'gen_up': opt_gen_up,
+            'dis_up': opt_dis_up,
+            'gen_down': opt_gen_down,
+            'dis_down': opt_dis_down,
         },
         device=args.gpu,
     )
