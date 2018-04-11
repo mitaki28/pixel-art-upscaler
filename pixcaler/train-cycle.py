@@ -62,42 +62,6 @@ def main():
         '--preview_interval', type=int, default=100,
         help='Interval of previewing generated image',    
     )
-    parser.add_argument(
-        '--mode', required=True, choices=('down', ),
-        help='training mode',
-    )
-    parser.add_argument(
-        '--use_random_nn_downscale', action='store_true', default=False,
-        help='downscale by sampling 4-nearest pixel randomly',
-    )
-    parser.add_argument(
-        '--flat_discriminator_up', action='store_true', default=False,
-        help='(deprecated)',
-    )
-    parser.add_argument(
-        '--flat_discriminator_down', action='store_true', default=False,
-        help='(deprecated)',
-    )
-    parser.add_argument(
-        '--gen_up', type=str,
-        help='path to generator of upscaler',
-    )
-    parser.add_argument(
-        '--dis_up', type=str,
-        help='path to discriminator of upscaler',
-    )
-    parser.add_argument(
-        '--flat_discriminator_down', action='store_true', default=False,
-        help='(deprecated)',
-    )
-    parser.add_argument(
-        '--gen_down', type=str,
-        help='path to generator of downscaler',
-    )
-    parser.add_argument(
-        '--dis_down', type=str,
-        help='path to discriminator of downscaler',
-    )
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -105,19 +69,10 @@ def main():
     print('# Minibatch-size: {}'.format(args.batchsize))
     print('# epoch: {}'.format(args.epoch))
     print('')
-
-    upscaler = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator_up)
-    if args.gen_up is not None:
-        chainer.serializers.load_npz(args.gen_up, upscaler.gen)
-    if args.dis_up is not None:
-        chainer.serializers.load_npz(args.dis_up, upscaler.dis)
-
-    downscaler = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator_down)
-    if args.gen_down is not None:
-        chainer.serializers.load_npz(args.gen_down, downscaler.gen)
-    if args.dis_down is not None:
-        chainer.serializers.load_npz(args.dis_down, downscaler.dis)
     
+    upscaler = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch)
+    downscaler = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch)
+
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         upscaler.to_gpu()
@@ -138,7 +93,7 @@ def main():
 
     train_l_d = AutoUpscaleDataset(
         "{}/trainA".format(args.dataset),
-        random_nn=args.use_random_nn_downscale,
+        random_nn=True,
     )
     train_s_d = Single32Dataset(
         "{}/trainB".format(args.dataset),
@@ -155,12 +110,6 @@ def main():
     test_l_iter = chainer.iterators.SerialIterator(test_l_d, 1)
     train_s_iter = chainer.iterators.SerialIterator(train_s_d, args.batchsize)
     test_s_iter = chainer.iterators.SerialIterator(test_s_d, 1)
-
-    if args.mode == 'down':
-        switching_interval = None
-        first = 'down'
-    else:
-        assert False, 'Unknown mode {}'.format(args.mode)
  
     # Set up a trainer
     updater = CycleUpdater(
