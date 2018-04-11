@@ -11,7 +11,8 @@ from chainer.utils import type_check
 import numpy
 
 def _debug(x, name):
-    Image.fromarray(np.asarray(np.clip(np.asarray(x.data) * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8).reshape(x.data.shape[1:]).transpose((1, 2, 0))).save('result/preview/debug-{}.png'.format(name))
+    x = chainer.cuda.to_cpu(x.data)[0]
+    Image.fromarray(np.asarray(np.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8).transpose((1, 2, 0))).save('result/preview/debug-{}.png'.format(name))
 
 
 class Pix2PixUpdater(chainer.training.StandardUpdater):
@@ -115,7 +116,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
     def loss_func_rec_gen(self, x_in, x_out):
         return F.mean_absolute_error(x_out, x_in)
 
-    def loss_gen(self, gen, x_out, x_in, y_fake, lam1=100, lam2=1/16):
+    def loss_gen(self, gen, x_out, x_in, y_fake, lam1=100, lam2=1):
         loss_rec = lam1*self.loss_func_rec_gen(x_in, x_out)
         loss_adv = lam2*self.loss_func_adv_gen(y_fake)
         loss = loss_rec + loss_adv
@@ -176,6 +177,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
         x_s_nn_l = self.upscaler.gen(x_s_nn)
         y_s_nn_l = self.upscaler.dis(x_s_nn, x_s_nn_l)
         y_l = self.upscaler.dis(x_s_nn, x_l)
+
 
         self.upscaler.gen.cleargrads()
         loss_gen = self.loss_gen(self.upscaler.gen, x_s_nn_l, x_s_nn, y_s_nn_l)
