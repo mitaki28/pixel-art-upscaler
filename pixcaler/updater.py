@@ -179,6 +179,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
 
         x_s_nn_l = self.upscaler.gen(x_s_nn)
         y_s_nn_l = self.upscaler.dis(x_s_nn, x_s_nn_l)
+        y_l = self.upscaler.dis(x_s_nn, x_l)
 
         self.upscaler.gen.cleargrads()
         loss_gen = self.loss_gen(self.upscaler.gen, x_s_nn_l, x_s_nn, y_s_nn_l)
