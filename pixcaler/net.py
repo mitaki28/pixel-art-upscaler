@@ -140,12 +140,10 @@ class Generator(chainer.Chain):
         for i in range(1, 8):
             cbr = self.enc['c{}'.format(i)]
             if xp.isnan(cbr.batchnorm.avg_var[-1]):
-                print('enc.c{} is broken'.format(i))
                 cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
         for i in range(0, 7):
             cbr = self.dec['c{}'.format(i)]
             if xp.isnan(cbr.batchnorm.avg_var[-1]):
-                print('dec.c{} is broken'.format(i))
                 cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)        
 
 class Discriminator(chainer.Chain):
