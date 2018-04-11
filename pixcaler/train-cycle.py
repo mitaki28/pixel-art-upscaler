@@ -118,8 +118,8 @@ def main():
         iterator={
             'main': train_l_iter,
             'trainB': train_s_iter,
-            'testA': train_l_iter,            
-            'testB': train_l_iter,
+            'testA': test_l_iter,            
+            'testB': test_s_iter,
         },
         optimizer={
             'opt_gen_up': opt_gen_up,
