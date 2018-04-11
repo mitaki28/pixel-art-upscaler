@@ -67,10 +67,6 @@ def out_image_cycle(gen_up, gen_down, n, dst):
         for it in range(n):
             batch_l = trainer.updater.get_iterator('testA').next()
             batch_s = trainer.updater.get_iterator('testB').next()
-
-            batchsize = len(batch)
-            assert batchsize == 1
-
             x_l = Variable(xp.asarray([b[0] for b in batch]).astype('f'))
             x_s = Variable(xp.asarray(batch_s).astype('f'))
             with chainer.using_config('train', False), chainer.using_config('enable_back_prop', False):
