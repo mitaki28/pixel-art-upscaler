@@ -170,8 +170,8 @@ class CycleUpdater(chainer.training.StandardUpdater):
         xp = self.upscaler.xp
 
         batch_a = self.get_iterator('main').next()
-        x_l = Variable(xp.asarray([b[0] for b in batch_a]).astype('f'))
-        x_s_nn = Variable(xp.asarray([b[1] for b in batch_a]).astype('f'))
+        x_s_nn = Variable(xp.asarray([b[0] for b in batch_a]).astype('f'))
+        x_l = Variable(xp.asarray([b[1] for b in batch_a]).astype('f'))
 
         x_s_nn_l = self.upscaler.gen(x_s_nn)
         y_s_nn_l = self.upscaler.dis(x_s_nn, x_s_nn_l)
