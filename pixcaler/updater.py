@@ -132,7 +132,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
         chainer.report({'loss_fake': L2}, dis)
         return loss
 
-    def update_downscaler(self):
+    def update_downscaler(self, lam1, lam2):
         opt_gen = self.get_optimizer('gen_down')
         opt_dis = self.get_optimizer('dis_down')
         
@@ -151,7 +151,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
         y_s = self.downscaler.dis(x_sl, x_s)
 
         self.downscaler.gen.cleargrads()
-        loss_gen = self.loss_gen(self.downscaler.gen, x_sls, x_s, y_sls)
+        loss_gen = self.loss_gen(self.downscaler.gen, x_sls, x_s, y_sls, lam1, lam2)
         loss_gen.backward()
         opt_gen.update()
 
@@ -164,7 +164,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
         opt_dis.update()
 
 
-    def update_upscaler(self):
+    def update_upscaler(self, lam1, lam2):
         opt_gen = self.get_optimizer('gen_up')
         opt_dis = self.get_optimizer('dis_up')
 
@@ -180,7 +180,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
 
 
         self.upscaler.gen.cleargrads()
-        loss_gen = self.loss_gen(self.upscaler.gen, x_s_nn_l, x_s_nn, y_s_nn_l)
+        loss_gen = self.loss_gen(self.upscaler.gen, x_s_nn_l, x_s_nn, y_s_nn_l, lam1, lam2)
         loss_gen.backward()
         opt_gen.update()
         
@@ -194,7 +194,7 @@ class CycleUpdater(chainer.training.StandardUpdater):
 
 
     def update_core(self):
-        self.update_upscaler()
-        self.update_downscaler()
+        self.update_upscaler(100, 1)
+        self.update_downscaler(100, 1)
 
 
