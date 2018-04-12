@@ -129,11 +129,16 @@ class Single32Dataset(dataset_mixin.DatasetMixin):
         target = random_crop(target, (self.fine_size, self.fine_size))
         target = random_flip(target, x_random=True)
         # alignment
-        source = resize(
+        targets = resize(
             resize(
                 target,
                 (self.fine_size // 2, self.fine_size // 2), Image.NEAREST,
             ),
             (self.fine_size, self.fine_size), Image.NEAREST,
         )
-        return source
+        # randomize and alignment
+        source = resize(
+            downscale_random_nearest_neighbor(target),
+            (self.fine_size, self.fine_size), Image.NEAREST,
+        )
+        return source, target

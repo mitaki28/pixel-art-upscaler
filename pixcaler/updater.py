@@ -139,11 +139,12 @@ class CycleUpdater(chainer.training.StandardUpdater):
         xp = self.downscaler.xp
 
         batch_b = self.get_iterator('trainB').next()
-        x_s = Variable(xp.asarray(batch_b).astype('f'))
+        x_s_rand = Variable(xp.asarray([b[0] for b in batch_b]).astype('f'))
+        x_s = Variable(xp.asarray([b[1] for b in batch_b]).astype('f'))
         
         self.upscaler.gen.fix_broken_batchnorm()
         with chainer.using_config('train', False), chainer.using_config('enable_back_prop', False):
-            x_sl = self.upscaler.gen(x_s)
+            x_sl = self.upscaler.gen(x_s_rand)
         x_sl.unchain_backward()
 
         x_sls = self.downscaler.gen(x_sl)
