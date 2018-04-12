@@ -93,7 +93,7 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
         target = random_flip(target, x_random=True)
         if self.random_nn:
             source = resize(
-                downscale_random_nearest_neighbor(target),
+                downscale_random_nearest_neighbor(target.copy()),
                 (self.fine_size, self.fine_size), Image.NEAREST,
             )
         else:
@@ -128,17 +128,17 @@ class Single32Dataset(dataset_mixin.DatasetMixin):
 
         target = random_crop(target, (self.fine_size, self.fine_size))
         target = random_flip(target, x_random=True)
+        # randomize and alignment
+        source = resize(
+            downscale_random_nearest_neighbor(target.copy()),
+            (self.fine_size, self.fine_size), Image.NEAREST,
+        )
         # alignment
-        targets = resize(
+        target = resize(
             resize(
                 target,
                 (self.fine_size // 2, self.fine_size // 2), Image.NEAREST,
             ),
-            (self.fine_size, self.fine_size), Image.NEAREST,
-        )
-        # randomize and alignment
-        source = resize(
-            downscale_random_nearest_neighbor(target),
             (self.fine_size, self.fine_size), Image.NEAREST,
         )
         return source, target
