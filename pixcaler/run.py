@@ -2,6 +2,7 @@ import argparse
 import os
 from PIL import Image
 from pathlib import Path
+import numpy as np
 
 import chainer
 from chainer import training
@@ -12,6 +13,7 @@ from pathlib import Path
 
 from pixcaler.net import Generator
 from pixcaler.util import chw_array_to_img, img_to_chw_array
+import math
 
 def transparent_background(img):
     background_color = img.getpixel((0, 0))
@@ -21,14 +23,20 @@ def transparent_background(img):
                 img.putpixel((i, j), (0, 0, 0, 0))
     return img
 
-def pad_power_of_2(img, minimum_size=32):
-    W, H = img.size
-    s = minimum_size
-    while s < W or s < H:
-        s *= 2
-    ret = Image.new('RGBA', (s, s))
-    ret.paste(img, ((s - W) // 2, (s - H) // 2))
-    return ret
+def pad_by_multiply_of(img, factor=64, add=0):
+    img = np.asarray(img)
+    h, w, c = img.shape
+    nw = factor * math.ceil(w / factor)
+    nh = factor * math.ceil(h / factor)
+    ph = nh - h
+    pw = nw - w
+    img = np.pad(img, [
+        (ph // 2 + add, (ph - ph // 2) + add),
+        (pw // 2 + add, (pw - pw // 2) + add),
+        (0, 0)
+    ], mode='reflect')
+    print(h, w, c, nw, nh, ph, pw, img.shape)
+    return Image.fromarray(img).convert('RGBA')
 
 def convert_image(img, gen):
     xp = gen.xp
@@ -63,6 +71,13 @@ def main():
         help='output images for compare',
     )
     parser.add_argument(
+        '--without_transparent', action='store_false', default=True,
+        help='replace color on (0, 0) to transparent color',
+    )
+    parser.add_argument(
+        '--patch_size', '-p', type=int,
+    )
+    parser.add_argument(
         '--generator', type=str, required=True,
         help='path to generator model',
     )
@@ -72,7 +87,6 @@ def main():
     )
     
     args = parser.parse_args()
-
     gen_path = Path(args.generator)
     print('GPU: {}'.format(args.gpu))
     print('')
@@ -105,20 +119,49 @@ def main():
         with Image.open(image_path) as img:
             oW, oH = img.size
             img = img.convert('RGBA')
-            img = transparent_background(img)
+            if not args.without_transparent:
+                img = transparent_background(img)
+            
             if args.mode == 'down':
-                img = pad_power_of_2(img, 64)
                 preprocessed_img = img
             elif args.mode == 'up':
-                img = pad_power_of_2(img, 32)
                 preprocessed_img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
             elif args.mode == 'direct':
                 preprocessed_img = img
             else:
                 raise RuntimeError('Unknown mode: {}'.format(args.mode))
-            
-            converted_img = convert_image(preprocessed_img, gen).convert('RGBA')
-            
+            if args.patch_size is None:
+                img = pad_by_multiply_of(img, 64)
+                converted_img = convert_image(preprocessed_img, gen).convert('RGBA')
+            else:
+                ps = args.patch_size
+                preprocessed_img = pad_by_multiply_of(preprocessed_img, ps // 2, ps // 4)
+                converted_img = Image.new('RGBA', (
+                    preprocessed_img.size[0] - ps // 4 * 2,
+                    preprocessed_img.size[1] - ps // 4 * 2,
+                ))
+                n_i = (preprocessed_img.size[0] - ps // 4 * 2) // (ps // 2)
+                n_j = (preprocessed_img.size[1] - ps // 4 * 2) // (ps // 2)
+                for i in range(n_i):
+                    for j in range(n_j):
+                        x = i * (ps // 2)
+                        y = j * (ps // 2)
+                        patch = preprocessed_img.crop((
+                            x,
+                            y,
+                            x + ps,
+                            y + ps,
+                        ))
+                        converted_patch = convert_image(patch, gen).convert('RGBA')
+                        converted_img.paste(
+                            converted_patch.crop((
+                                ps // 4, ps // 4,
+                                ps // 4 + ps // 2, ps // 4 + ps // 2,
+                            )),
+                            (x, y),
+                        )
+                        print('{}: {}/{} done'.format(image_path, i * n_j + j + 1, n_i * n_j))
+
             if args.mode == 'down':
                 cW, cH = converted_img.size
                 pW, pH = (cW - oW, cH - oH)
