@@ -11,7 +11,7 @@ export class App {
     @observable private _isShowingAbout: boolean;
 
     constructor() {
-        this.upscalerLoader = new KerasUpscalerLoader();
+        this.upscalerLoader = new TfjsUpscalerLoader();
         this.upscaleConversionList = new UpscaleConversionList();
         this._uploadKey = generateRandomString();
         this._isShowingAbout = false;

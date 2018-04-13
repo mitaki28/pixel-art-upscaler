@@ -137,7 +137,7 @@ export class TfjsUpscaler extends Upscaler {
 
         let y: Float32Array;
         try {
-            const tensor = ((await this._model.predict(tf.tensor(x, [height, width, 4]))) as Array<tf.Tensor<tf.Rank>>)[0];
+            const tensor = ((await this._model.predict(tf.tensor(x, [1, height, width, 4]))) as tf.Tensor<tf.Rank>);
             y = (await tensor.flatten().data() as Float32Array);
         } catch (e) {
             return left(ConversionError.failedToConvert(e));
