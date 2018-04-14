@@ -158,6 +158,20 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
                                     case Task.SUCCESS:
                                         return null;
                                 }
+                            case "postClip":
+                                switch (stage.task.state.status) {
+                                    case Task.PENDING:
+                                    case Task.RUNNING:
+                                        return (
+                                            <div>
+                                                <div>仕上げ中・・・</div>
+                                            </div>
+                                        );
+                                    case Task.FAILURE:
+                                        return <div>変換に失敗しました: {stage.task.state.error.message} </div>
+                                    case Task.SUCCESS:
+                                        return null;
+                                }                                
                         }
                     })()}
                     {/* <Col md={12}>

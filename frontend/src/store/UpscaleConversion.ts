@@ -6,6 +6,7 @@ import { Upscaler } from "./Upscaler";
 import { Task } from "./Task";
 import { Either, right, left } from "fp-ts/lib/Either";
 import { DataUrlImage } from "./Image";
+import { downsample_nearest_neighbor, upsample_nearest_neighbor } from "../util/tensor";
 
 const SIZE_FACTOR = 64;
 const PATCH_SIZE = 32;
@@ -43,6 +44,7 @@ export class UpscaleTask extends Task<DataUrlImage> {
             const ni = dstHeight / PATCH_SIZE;
             const nj = dstWidth / PATCH_SIZE;
             this.patchUpscaleTasks = Array(ni).fill([]).map(() => Array(nj).fill(null));
+            const dst = new (Jimp.default as any)(dstWidth, dstHeight);
             for (let i = 0; i < ni; i++) {
                 for (let j = 0; j < nj; j++) {
                     const y = i * PATCH_SIZE;
@@ -53,15 +55,10 @@ export class UpscaleTask extends Task<DataUrlImage> {
                         2 * PATCH_SIZE,
                         2 * PATCH_SIZE,
                     );
-                    this.patchUpscaleTasks[i][j] = await PatchUpscaleTask.create(upscaler, await DataUrlImage.fromJimp(patch));
-                }
-            }
-            const dst = new (Jimp.default as any)(dstWidth, dstHeight);
-            for (let i = 0; i < ni; i++) {
-                for (let j = 0; j < nj; j++) {
-                    const y = i * PATCH_SIZE;
-                    const x = j * PATCH_SIZE;
-                    const convertedPatchSrc = await this.patchUpscaleTasks[i][j]!.run();
+                    const convertedPatchSrc = await (this.patchUpscaleTasks[i][j] = await PatchUpscaleTask.create(
+                        upscaler,
+                        await DataUrlImage.fromJimp(patch),
+                    )).run();
                     const convertedPatch = await convertedPatchSrc.toJimp();
                     dst.composite(convertedPatch, x, y);
                 }
@@ -81,7 +78,7 @@ export class UpscaleConversionFlow {
         preScale2x: null,
         prePadding: null,
         preAlign: null,
-        upscale:  null,
+        upscale: null,
         postClip: null,
     };
     @observable private _currentStageId: keyof UpscaleConversionFlow.StageDef | null = null;
@@ -128,12 +125,12 @@ export class UpscaleConversionFlow {
 
     @computed
     get startedStages(): UpscaleConversionFlow.Stage[] {
-        return (Object.keys(this._tasks) as  UpscaleConversionFlow.StageId[])
-            .reduce((acc: UpscaleConversionFlow.Stage[], id: UpscaleConversionFlow.StageId) => 
+        return (Object.keys(this._tasks) as UpscaleConversionFlow.StageId[])
+            .reduce((acc: UpscaleConversionFlow.Stage[], id: UpscaleConversionFlow.StageId) =>
                 this._tasks[id] === null
-                ? acc
-                : [...acc, {id, task: this._tasks[id]}] as UpscaleConversionFlow.Stage[],
-            []);
+                    ? acc
+                    : [...acc, { id, task: this._tasks[id] }] as UpscaleConversionFlow.Stage[],
+                []);
     }
 
     @computed
@@ -155,54 +152,55 @@ export class UpscaleConversionFlow {
     @action.bound
     private scaleInputImageByNearestNeighbor(src: DataUrlImage): Task<DataUrlImage> {
         return new Task(async () => {
-            const img = await src.toJimp();
-            img.resize(img.bitmap.width * 2, img.bitmap.height * 2, Jimp.RESIZE_NEAREST_NEIGHBOR);
-            return await DataUrlImage.fromJimp(img);
+            return await DataUrlImage.fromTf(upsample_nearest_neighbor(await src.toTf()));
         });
     }
 
     @action.bound
     private prePadding(src: DataUrlImage): Task<DataUrlImage> {
         return new Task(async () => {
-            const img = await src.toJimp();
-            const [w, h] = [img.bitmap.width, img.bitmap.height];
-            const [nw, nh] = [SIZE_FACTOR * Math.ceil(w / SIZE_FACTOR), SIZE_FACTOR * Math.ceil(h / SIZE_FACTOR)];
-            const dst = new (Jimp.default as any)(nw + PATCH_SIZE, nh + PATCH_SIZE);
-            dst.composite(img, (nw + PATCH_SIZE - w) / 2, (nh + PATCH_SIZE - h) / 2);
-            return await DataUrlImage.fromJimp(dst);
+            const t = await src.toTf();
+            const [h, w, c] = t.shape;
+            const [nh, nw] = [h, w].map((x) => SIZE_FACTOR * Math.ceil(x / SIZE_FACTOR) + PATCH_SIZE);
+            const [ph, pw] = [
+                Math.floor((nh - h) / 2),
+                Math.floor((nw - w) / 2),
+            ];
+            return await DataUrlImage.fromTf(t.pad([
+                [ph, nh - h - ph],
+                [pw, nw - w - pw],
+                [0, 0],
+            ]));
         });
     }
 
     @action.bound
     private preAlign(src: DataUrlImage): Task<DataUrlImage> {
         return new Task(async () => {
-            const img = await src.toJimp();
-            const [w, h] = [img.bitmap.width, img.bitmap.height]
-            img.resize(w / 2, h / 2, Jimp.RESIZE_NEAREST_NEIGHBOR);
-            img.resize(w, h, Jimp.RESIZE_NEAREST_NEIGHBOR);
-            // Jimp の nearest neighbor は1px境界がずれるので補正する
-            img.contain(w + 1, h + 1, Jimp.HORIZONTAL_ALIGN_RIGHT | Jimp.VERTICAL_ALIGN_BOTTOM);
-            img.crop(0, 0, w, h);
-            return await DataUrlImage.fromJimp(img);
+            return await DataUrlImage.fromTf(
+                upsample_nearest_neighbor(
+                    downsample_nearest_neighbor(await src.toTf()),
+                ),
+            );
         });
     }
 
     @action.bound
     private postCrip(convertedSrc: DataUrlImage, originalSrc: DataUrlImage): Task<DataUrlImage> {
         return new Task(async () => {
-            const convertedImage = await convertedSrc.toJimp();
-            const originalImage = await originalSrc.toJimp();
-            const dstWidth = 2 * originalImage.bitmap.width;
-            const dstHeight = 2 * originalImage.bitmap.height;
-            const convertedWitdh = convertedImage.bitmap.width;
-            const convertedHeight = convertedImage.bitmap.height;
-            const dstImage = convertedImage.crop(
-                (convertedWitdh - dstWidth) / 2,
+            const convertedImage = await convertedSrc.toTf();
+            const originalImage = await originalSrc.toTf();
+            const [dstHeight, dstWidth] = [2 * originalImage.shape[0], 2 * originalImage.shape[1]];
+            const [convertedHeight, convertedWidth, convertedChannel] = convertedImage.shape;
+            return DataUrlImage.fromTf(convertedImage.slice([
                 (convertedHeight - dstHeight) / 2,
-                dstWidth,
+                (convertedWidth - dstWidth) / 2,
+                0,
+            ], [
                 dstHeight,
-            );
-            return DataUrlImage.fromJimp(dstImage);
+                dstWidth,
+                convertedChannel,
+            ]));
         });
     }
 
@@ -228,7 +226,7 @@ export namespace UpscaleConversionFlow {
     }
     export type StageId = keyof StageDef;
     export type Stage = {
-        [K in StageId]: {id: K, task: NonNullable<StageDef[K]>}
+        [K in StageId]: { id: K, task: NonNullable<StageDef[K]> }
     }[StageId];
 }
 
