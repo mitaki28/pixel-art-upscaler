@@ -52,7 +52,7 @@ export class AppContainer extends React.Component<{ store: App }> {
                 <Navbar>
                     <Navbar.Header>
                         <Navbar.Brand>
-                            <a href="#">Pixel-Art Upscaler</a>
+                            <a href="#">Pixcaler</a>
                         </Navbar.Brand>
                     </Navbar.Header>
                     <Nav>
@@ -64,9 +64,6 @@ export class AppContainer extends React.Component<{ store: App }> {
                         </NavItem>
                     </Nav>
                 </Navbar>
-                <Alert bsStyle="warning">
-                  <strong>注意!</strong>{" "}Webアプリ版は移植の関係上、コンソール版よりも精度の低い画像が生成されます。
-                </Alert>
                 <Jumbotron style={{ textAlign: "center" }}>
                     <div>
                         <label>
@@ -81,9 +78,6 @@ export class AppContainer extends React.Component<{ store: App }> {
                                 />
                             </span>
                         </label>
-                    </div>
-                    <div>
-                        ※ 解像度: 32x32 以下
                     </div>
                 </Jumbotron>
                 <div>

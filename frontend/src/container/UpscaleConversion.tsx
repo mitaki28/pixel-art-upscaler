@@ -1,100 +1,189 @@
 import * as React from "react";
 import { observer } from "mobx-react"
-import { UpscaleConversionList, UpscaleConversion, UpscaleConversionState } from "../store/UpscaleConversion";
-import { ConversionError } from "../store/Converter";
+import { UpscaleConversionList, UpscaleConversionFlow, UpscaleTask } from "../store/UpscaleConversion";
 import { Row, Panel, Col, Well, Glyphicon, Button } from "react-bootstrap";
 import { Loading } from "../component/Loading";
+import { DataUrlImage } from "../store/Image";
+import { Task } from "../store/Task";
+
+export const SimpleImageComponent = (props: { result: DataUrlImage }) => (
+    <img src={props.result.dataUrl} />
+);
+
+export const GenericErrorComponent = (props: { message: string }) => (es: { error: Error }) => (
+    <div>{props.message}: {es.error.message}</div>
+);
+
+export interface TaskContainerProps {
+    task: Task<DataUrlImage> | null;
+    title: string;
+    resultComponent: React.ComponentType<{ result: DataUrlImage }>
+    errorComponent: React.ComponentType<{ error: Error }>;
+}
 
 @observer
-export class UpscaleConversionContainer extends React.Component<{ store: UpscaleConversion }> {
-
-    renderInputImage(): JSX.Element {
-        switch (this.props.store.state.status) {
-            case UpscaleConversionState.LOADING:
-                return <Loading />
-            case UpscaleConversionState.LOAD_FAILURE:
-                return <div>ファイルの読み込みに失敗しました: {this.props.store.state.error.message}</div>
-            case UpscaleConversionState.CONVERTING:
-            case UpscaleConversionState.CONVERTED:
-            case UpscaleConversionState.CONVERTION_FAILURE:
-                return <img
-                    src={this.props.store.inputImage!}
-                />;
+export class TaskContainer extends React.Component<TaskContainerProps> {
+    renderTaskStatus() {
+        if (this.props.task == null) {
+            return <Loading />;
         }
-    }
-
-    renderInputImage2x(): JSX.Element {
-        switch (this.props.store.state.status) {
-            case UpscaleConversionState.LOADING:
+        const ErrorComponent = this.props.errorComponent;
+        switch (this.props.task.state.status) {
+            case Task.PENDING:
+            case Task.RUNNING:
                 return <Loading />
-            case UpscaleConversionState.LOAD_FAILURE:
-                return <div>ファイルの読み込みに失敗しました: {this.props.store.state.error.message}</div>
-            case UpscaleConversionState.CONVERTING:
-            case UpscaleConversionState.CONVERTED:
-            case UpscaleConversionState.CONVERTION_FAILURE:
-                return <img
-                    src={this.props.store.inputImage2x!}
-                />;
-        }
-    }
-
-    renderConvertedImage() {
-        switch (this.props.store.state.status) {
-            case UpscaleConversionState.LOADING:
-            case UpscaleConversionState.LOAD_FAILURE:
-            case UpscaleConversionState.CONVERTING:
-                return <Loading />
-            case UpscaleConversionState.CONVERTED:
-                return <img
-                    src={this.props.store.convertedImage!}
-                />
-            case UpscaleConversionState.CONVERTION_FAILURE:
-                return this.renderConversionError(this.props.store.state.error);
-        }
-    }
-
-    renderConversionError(error: ConversionError) {
-        switch (error.code) {
-            case ConversionError.FAILED_TO_LOAD:
-                return <div>ファイルの読み込みに失敗しました: {error.error.message}</div>;
-            case ConversionError.FAILED_TO_CONVERT:
-                return <div>ファイルの変換に失敗しました: {error.error.message}</div>;
-            case ConversionError.TOO_LARGE_RESOLUTION:
-                return <div>解像度が{error.limit.width}x{error.limit.height}以下の画像しか変換できません</div>;
+            case Task.FAILURE:
+                return <ErrorComponent error={this.props.task.state.error} />;
+            case Task.SUCCESS:
+                return <img src={this.props.task.state.result.dataUrl} />;
         }
     }
 
     render() {
         return (
+            <Panel style={{ width: "100%", textAlign: "center" }}>
+                <Panel.Heading>{this.props.title}</Panel.Heading>
+                <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
+                    {this.renderTaskStatus()}
+                </Panel.Body>
+            </Panel>
+        );
+    }
+}
+
+@observer
+export class UpscaleTaskContainer extends React.Component<TaskContainerProps> {
+    renderTaskStatus() {
+        if (this.props.task == null) {
+            return <Loading />;
+        }
+        const ErrorComponent = this.props.errorComponent;
+        switch (this.props.task.state.status) {
+            case Task.PENDING:
+            case Task.RUNNING:
+                return <Loading />
+            case Task.FAILURE:
+                return <ErrorComponent error={this.props.task.state.error} />;
+            case Task.SUCCESS:
+                return <img src={this.props.task.state.result.dataUrl} />;
+        }
+    }
+
+    render() {
+        return (
+            <Panel style={{ width: "100%", textAlign: "center" }}>
+                <Panel.Heading>{this.props.title}</Panel.Heading>
+                <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
+                    {this.renderTaskStatus()}
+                </Panel.Body>
+            </Panel>
+        );
+    }
+}
+
+
+@observer
+export class UpscaleConversionContainer extends React.Component<{ store: UpscaleConversionFlow }> {
+    renderUpscaleTask(upscaleTask: UpscaleTask) {
+        return (
+            <table style={{margin: 0, padding: 0}}>
+                {upscaleTask.patchUpscaleTasks.map((row, i) => 
+                    <tr key={i}>
+                        {row.map((col, j) => (
+                            <td>
+                                {col && (
+                                    col.state.status === Task.SUCCESS
+                                    ? <img src={col.state.result.dataUrl} />
+                                    : <img src={col.original.dataUrl} />
+                                )}
+                            </td>    
+                        ))}
+                    </tr>
+                )}
+            </table>
+        );
+    }
+    render() {
+        return (
             <Panel>
-                <Panel.Heading style={{textAlign: "right"}}>
+                <Panel.Heading style={{ textAlign: "right" }}>
                     <Button bsStyle="danger" onClick={this.props.store.close}><Glyphicon glyph="remove" /></Button>
                 </Panel.Heading>
                 <Panel.Body style={{ overflow: "hidden" }}>
-                    <Col md={4}>
-                        <Panel style={{ width: "100%", textAlign: "center" }}>
-                            <Panel.Heading>元画像</Panel.Heading>
-                            <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white"}}>
-                                {this.renderInputImage()}
-                            </Panel.Body>
-                        </Panel>
+                    {(() => {
+                        return this.props.store.startedStages.map(({id, task}) => {
+                            return task.state.status === Task.SUCCESS ? <img src={task.state.result.dataUrl} /> : null;
+                        })
+                    })()}
+                    {(() => {
+                        const stage = this.props.store.currentTask;
+                        if (stage === null) {
+                            return null;
+                        }
+                        switch (stage.id) {
+                            case "load":
+                                switch (stage.task.state.status) {
+                                    case Task.PENDING:
+                                    case Task.RUNNING:
+                                        return <div>ファイルの読み込み中・・・</div>;
+                                    case Task.FAILURE:
+                                        return <div>ファイルの読み込みに失敗しました: {stage.task.state.error.message} </div>
+                                    case Task.SUCCESS:
+                                        return null;
+                                }
+                            case "preScale2x":
+                            case "prePadding":
+                            case "preAlign":
+                                switch (stage.task.state.status) {
+                                    case Task.PENDING:
+                                    case Task.RUNNING:
+                                        return <div>前処理中・・・</div>;
+                                    case Task.FAILURE:
+                                        return <div>前処理に失敗しました: {stage.task.state.error.message} </div>
+                                    case Task.SUCCESS:
+                                        return null;
+                                }
+                            case "upscale":
+                                switch (stage.task.state.status) {
+                                    case Task.PENDING:
+                                    case Task.RUNNING:
+                                        return (
+                                            <div>
+                                                <div>拡大中・・・</div>
+                                                {this.renderUpscaleTask(stage.task as UpscaleTask)}
+                                            </div>
+                                        );
+                                    case Task.FAILURE:
+                                        return <div>拡大に失敗しました: {stage.task.state.error.message} </div>
+                                    case Task.SUCCESS:
+                                        return null;
+                                }
+                        }
+                    })()}
+                    {/* <Col md={12}>
+                        <TaskContainer
+                            title="元画像"
+                            task={this.props.store.loadImageTask}
+                            resultComponent={SimpleImageComponent}
+                            errorComponent={GenericErrorComponent({ message: "ファイルの読み込みに失敗しました" })}
+                        />
                     </Col>
-                    <Col md={4}>
-                        <Panel style={{ width: "100%", textAlign: "center" }}>
-                            <Panel.Heading>元画像(x2)</Panel.Heading>
-                            <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
-                                {this.renderInputImage2x()}
-                            </Panel.Body>
-                        </Panel>
-                    </Col>
-                    <Col md={4}>
+                    <Col md={12}>
+                        <TaskContainer
+                            title="元画像(x2)"
+                            task={this.props.store.loadImageTask}
+                            resultComponent={SimpleImageComponent}
+                            errorComponent={GenericErrorComponent({ message: "画像の拡大に失敗しました" })}
+                        />
+                    </Col> */}
+                    {/* <Col md={12}>
                         <Panel style={{ width: "100%", textAlign: "center" }}>
                             <Panel.Heading>変換後</Panel.Heading>
                             <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
                                 {this.renderConvertedImage()}
                             </Panel.Body>
                         </Panel>
-                    </Col>
+                    </Col> */}
                 </Panel.Body>
             </Panel>
         );
