@@ -9,15 +9,19 @@ import { DataUrlImage } from "./Image";
 import { downsample_nearest_neighbor, upsample_nearest_neighbor } from "../util/tensor";
 
 const SIZE_FACTOR = 64;
-const PATCH_SIZE = 32;
 
 export class PatchUpscaleTask extends Task<DataUrlImage> {
     @observable _patch: DataUrlImage;
-    private constructor(upscaler: Upscaler, patch: DataUrlImage, private readonly _original: DataUrlImage) {
+    private constructor(
+        upscaler: Upscaler,
+        patch: DataUrlImage,
+        public readonly patchSize: number,
+        private readonly _original: DataUrlImage,
+    ) {
         super(async () => {
             const src = await upscaler.convert(patch);
             return await src.withJimp((img) => {
-                img.crop(PATCH_SIZE / 2, PATCH_SIZE / 2, PATCH_SIZE, PATCH_SIZE);
+                img.crop(this.patchSize / 2, this.patchSize / 2, this.patchSize, this.patchSize);
             });
         });
         this._patch = patch;
@@ -27,44 +31,126 @@ export class PatchUpscaleTask extends Task<DataUrlImage> {
         return this._original;
     }
 
-    public static async create(upscaler: Upscaler, patch: DataUrlImage) {
-        return new PatchUpscaleTask(upscaler, patch, await patch.withJimp((img) => {
-            img.crop(PATCH_SIZE / 2, PATCH_SIZE / 2, PATCH_SIZE, PATCH_SIZE);
+    public static async create(upscaler: Upscaler, patch: DataUrlImage, patchSize: number) {
+        return new PatchUpscaleTask(upscaler, patch, patchSize, await patch.withJimp((img) => {
+            img.crop(patchSize / 2, patchSize / 2, patchSize, patchSize);
         }));
     }
 }
 
 export class UpscaleTask extends Task<DataUrlImage> {
-    @observable patchUpscaleTasks: Array<Array<PatchUpscaleTask | null>> = [];
+    @observable private _patchUpscaleTasks: Array<Array<PatchUpscaleTask | null>> = [];
+    @observable private _preprocessedImagePreview: DataUrlImage | null = null;
+
+    public readonly patchSize = 32;
     constructor(upscaler: Upscaler, src: DataUrlImage) {
         super(async () => {
-            const img = await src.toJimp();
+            const preprocessedImage = await this.scale2x(src)
+                .then(this.padding)
+                .then(this.align);
+            this._preprocessedImagePreview = await preprocessedImage.withJimp((img) => {
+                img.crop(
+                    this.patchSize / 2,
+                    this.patchSize / 2,
+                    img.bitmap.width - this.patchSize / 2,
+                    img.bitmap.height - this.patchSize / 2,
+                );
+            });
+            const img = await preprocessedImage.toJimp();
             const [w, h] = [img.bitmap.width, img.bitmap.height];
-            const [dstWidth, dstHeight] = [w - PATCH_SIZE, h - PATCH_SIZE];
-            const ni = dstHeight / PATCH_SIZE;
-            const nj = dstWidth / PATCH_SIZE;
-            this.patchUpscaleTasks = Array(ni).fill([]).map(() => Array(nj).fill(null));
-            const dst = new (Jimp.default as any)(dstWidth, dstHeight);
+            const [dstWidth, dstHeight] = [w - this.patchSize, h - this.patchSize];
+            const ni = dstHeight / this.patchSize;
+            const nj = dstWidth / this.patchSize;
+            this._patchUpscaleTasks = Array(ni).fill([]).map(() => Array(nj).fill(null));
+            const dst: Jimp.Jimp = new (Jimp.default as any)(dstWidth, dstHeight);
             for (let i = 0; i < ni; i++) {
                 for (let j = 0; j < nj; j++) {
-                    const y = i * PATCH_SIZE;
-                    const x = j * PATCH_SIZE;
+                    const y = i * this.patchSize;
+                    const x = j * this.patchSize;
                     const patch = img.clone().crop(
                         x,
                         y,
-                        2 * PATCH_SIZE,
-                        2 * PATCH_SIZE,
+                        2 * this.patchSize,
+                        2 * this.patchSize,
                     );
                     const convertedPatchSrc = await (this.patchUpscaleTasks[i][j] = await PatchUpscaleTask.create(
                         upscaler,
                         await DataUrlImage.fromJimp(patch),
+                        this.patchSize,
                     )).run();
                     const convertedPatch = await convertedPatchSrc.toJimp();
                     dst.composite(convertedPatch, x, y);
                 }
             }
-            return await DataUrlImage.fromJimp(dst);
+            return await this.crip(await DataUrlImage.fromJimp(dst), src);
         });
+    }
+    @computed
+    get patchUpscaleTasks() {
+        return this._patchUpscaleTasks;
+    }
+    @computed
+    get preprocessedImagePreview() {
+        return this._preprocessedImagePreview;
+    }
+    @computed
+    get progress() {
+        const all = this.patchUpscaleTasks.reduce((acc, v) => acc + v.length, 0);
+        if (all === 0) {
+            return NaN;
+        }
+        const done = this.patchUpscaleTasks.reduce(
+            (acc, v) => acc + v.filter((t) => t !== null && t.state.status === Task.SUCCESS).length,
+            0,
+        );
+        return 100 * (done / all);
+    }
+    
+    @action.bound
+    private async scale2x(src: DataUrlImage): Promise<DataUrlImage> {
+        return DataUrlImage.fromTf(upsample_nearest_neighbor(await src.toTf()));
+    }
+
+    @action.bound
+    private async padding(src: DataUrlImage): Promise<DataUrlImage> {
+        const t = await src.toTf();
+        const [h, w, c] = t.shape;
+        const [nh, nw] = [h, w].map((x) => SIZE_FACTOR * Math.ceil(x / SIZE_FACTOR) + this.patchSize);
+        const [ph, pw] = [
+            Math.floor((nh - h) / 2),
+            Math.floor((nw - w) / 2),
+        ];
+        return await DataUrlImage.fromTf(t.pad([
+            [ph, nh - h - ph],
+            [pw, nw - w - pw],
+            [0, 0],
+        ]));
+    }
+
+    @action.bound
+    private async align(src: DataUrlImage): Promise<DataUrlImage> {
+        return await DataUrlImage.fromTf(
+            upsample_nearest_neighbor(
+                downsample_nearest_neighbor(await src.toTf()),
+            ),
+        );
+    }
+
+    @action.bound
+    private async crip(convertedSrc: DataUrlImage, originalSrc: DataUrlImage): Promise<DataUrlImage> {
+        const convertedImage = await convertedSrc.toTf();
+        const originalImage = await originalSrc.toTf();
+        const [dstHeight, dstWidth] = [2 * originalImage.shape[0], 2 * originalImage.shape[1]];
+        const [convertedHeight, convertedWidth, convertedChannel] = convertedImage.shape;
+        return DataUrlImage.fromTf(convertedImage.slice([
+            (convertedHeight - dstHeight) / 2,
+            (convertedWidth - dstWidth) / 2,
+            0,
+        ], [
+            dstHeight,
+            dstWidth,
+            convertedChannel,
+        ]));
     }
 }
 
@@ -75,13 +161,11 @@ export class UpscaleConversionFlow {
     @observable private _isRunning: boolean = false;
     @observable private _tasks: UpscaleConversionFlow.StageDef = {
         load: null,
-        preScale2x: null,
-        prePadding: null,
-        preAlign: null,
+        scale2x: null,
         upscale: null,
-        postClip: null,
     };
-    @observable private _currentStageId: keyof UpscaleConversionFlow.StageDef | null = null;
+    @observable private _currentStageId: UpscaleConversionFlow.StageId | null = null;
+    @observable private _selectedStageId: UpscaleConversionFlow.StageId | null = null;
 
     constructor(
         public readonly id: string,
@@ -102,25 +186,45 @@ export class UpscaleConversionFlow {
         this._isRunning = true;
         try {
             const inputImage = await this.runTask("load", this.loadInputImage(this._inputFile));
-            const inputImage2x = await this.runTask("preScale2x", this.scaleInputImageByNearestNeighbor(inputImage));
-            const prePaddedImage = await this.runTask("prePadding", this.prePadding(inputImage2x));
-            const preAlignedImage = await this.runTask("preAlign", this.preAlign(prePaddedImage));
-            const upscaledImage = await this.runTask("upscale", new UpscaleTask(this.upscaler, preAlignedImage));
-            const dstImage = await this.runTask("postClip", this.postCrip(upscaledImage, inputImage));
+            await this.runTask("scale2x", this.scaleInputImageByNearestNeighbor(inputImage));
+            await this.runTask("upscale", new UpscaleTask(this.upscaler, inputImage));
         } finally {
             this._isRunning = false;
         }
     }
 
+    getTask<K extends UpscaleConversionFlow.StageId>(id: K): UpscaleConversionFlow.StageDef[K] | null {
+        return this._tasks[id];
+    }
+
+    getStage(id: UpscaleConversionFlow.StageId): UpscaleConversionFlow.Stage | null {
+        return {
+            id: this._currentStageId,
+            task: this._tasks[id],
+        } as UpscaleConversionFlow.Stage | null;
+    }
+
     @computed
-    get currentTask(): UpscaleConversionFlow.Stage | null {
+    get currentStage(): UpscaleConversionFlow.Stage | null {
         if (this._currentStageId === null) {
             return null;
         }
-        return {
-            id: this._currentStageId,
-            task: this._tasks[this._currentStageId],
-        } as UpscaleConversionFlow.Stage;
+        return this.getStage(this._currentStageId);
+    }
+
+    @computed
+    get selectedStageId(): UpscaleConversionFlow.StageId | null {
+        return this._selectedStageId || this._currentStageId;
+    }
+
+
+    @computed
+    get selectedStage(): UpscaleConversionFlow.Stage | null {
+        if (this._selectedStageId === null) {
+            return this.currentStage;
+        } else {
+            return this.getStage(this._selectedStageId);
+        }
     }
 
     @computed
@@ -136,6 +240,11 @@ export class UpscaleConversionFlow {
     @computed
     get finishedStages(): UpscaleConversionFlow.Stage[] {
         return this.startedStages.filter((stage) => stage.task.state.status === Task.SUCCESS);
+    }
+
+    @computed
+    get allFinished() {
+        return Object.values(this._tasks).every((task) => task.state.status === Task.SUCCESS);
     }
 
     @action.bound
@@ -157,52 +266,10 @@ export class UpscaleConversionFlow {
     }
 
     @action.bound
-    private prePadding(src: DataUrlImage): Task<DataUrlImage> {
-        return new Task(async () => {
-            const t = await src.toTf();
-            const [h, w, c] = t.shape;
-            const [nh, nw] = [h, w].map((x) => SIZE_FACTOR * Math.ceil(x / SIZE_FACTOR) + PATCH_SIZE);
-            const [ph, pw] = [
-                Math.floor((nh - h) / 2),
-                Math.floor((nw - w) / 2),
-            ];
-            return await DataUrlImage.fromTf(t.pad([
-                [ph, nh - h - ph],
-                [pw, nw - w - pw],
-                [0, 0],
-            ]));
-        });
+    selectStage(id: UpscaleConversionFlow.StageId): void {
+        this._selectedStageId = id;
     }
 
-    @action.bound
-    private preAlign(src: DataUrlImage): Task<DataUrlImage> {
-        return new Task(async () => {
-            return await DataUrlImage.fromTf(
-                upsample_nearest_neighbor(
-                    downsample_nearest_neighbor(await src.toTf()),
-                ),
-            );
-        });
-    }
-
-    @action.bound
-    private postCrip(convertedSrc: DataUrlImage, originalSrc: DataUrlImage): Task<DataUrlImage> {
-        return new Task(async () => {
-            const convertedImage = await convertedSrc.toTf();
-            const originalImage = await originalSrc.toTf();
-            const [dstHeight, dstWidth] = [2 * originalImage.shape[0], 2 * originalImage.shape[1]];
-            const [convertedHeight, convertedWidth, convertedChannel] = convertedImage.shape;
-            return DataUrlImage.fromTf(convertedImage.slice([
-                (convertedHeight - dstHeight) / 2,
-                (convertedWidth - dstWidth) / 2,
-                0,
-            ], [
-                dstHeight,
-                dstWidth,
-                convertedChannel,
-            ]));
-        });
-    }
 
     @computed
     get canClose() {
@@ -218,11 +285,8 @@ export class UpscaleConversionFlow {
 export namespace UpscaleConversionFlow {
     export interface StageDef {
         load: Task<DataUrlImage> | null;
-        preScale2x: Task<DataUrlImage> | null;
-        prePadding: Task<DataUrlImage> | null;
-        preAlign: Task<DataUrlImage> | null;
+        scale2x: Task<DataUrlImage> | null;
         upscale: UpscaleTask | null;
-        postClip: Task<DataUrlImage> | null;
     }
     export type StageId = keyof StageDef;
     export type Stage = {
