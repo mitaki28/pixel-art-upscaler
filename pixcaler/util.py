@@ -30,3 +30,7 @@ def downscale_random_nearest_neighbor(img):
     hw_idx = np.indices((h // 2, w // 2))
     c_idx = np.random.randint(0, 4, img.shape[:2])
     return img[hw_idx[0], hw_idx[1], c_idx].transpose((2, 0, 1))
+
+def align_2x_nearest_neighbor_scaled_image(img):
+    w, h = img.size
+    return img.resize((w // 2, h // 2), Image.NEAREST).resize((w, h), Image.NEAREST)

@@ -12,7 +12,7 @@ from chainer import serializers
 from pathlib import Path
 
 from pixcaler.net import Generator
-from pixcaler.util import chw_array_to_img, img_to_chw_array
+from pixcaler.util import chw_array_to_img, img_to_chw_array, align_2x_nearest_neighbor_scaled_image
 import math
 
 def transparent_background(img):
@@ -131,32 +131,36 @@ def main():
             else:
                 raise RuntimeError('Unknown mode: {}'.format(args.mode))
             if args.patch_size is None:
-                img = pad_by_multiply_of(img, 64)
+                preprocessed_img = pad_by_multiply_of(img, 64)
+                if args.mode == 'up':
+                    preprocessed_img = align_2x_nearest_neighbor_scaled_image(preprocessed_img)
                 converted_img = convert_image(preprocessed_img, gen).convert('RGBA')
             else:
                 ps = args.patch_size
-                preprocessed_img = pad_by_multiply_of(preprocessed_img, ps // 2, ps // 4)
+                preprocessed_img = pad_by_multiply_of(preprocessed_img, ps, ps // 2)
+                if args.mode == 'up':
+                    preprocessed_img = align_2x_nearest_neighbor_scaled_image(preprocessed_img)
                 converted_img = Image.new('RGBA', (
-                    preprocessed_img.size[0] - ps // 4 * 2,
-                    preprocessed_img.size[1] - ps // 4 * 2,
+                    preprocessed_img.size[0] - ps // 2 * 2,
+                    preprocessed_img.size[1] - ps // 2 * 2,
                 ))
-                n_i = (preprocessed_img.size[0] - ps // 4 * 2) // (ps // 2)
-                n_j = (preprocessed_img.size[1] - ps // 4 * 2) // (ps // 2)
+                n_i = (preprocessed_img.size[0] - ps // 2 * 2) // ps
+                n_j = (preprocessed_img.size[1] - ps // 2 * 2) // ps
                 for i in range(n_i):
                     for j in range(n_j):
-                        x = i * (ps // 2)
-                        y = j * (ps // 2)
+                        x = i * ps
+                        y = j * ps
                         patch = preprocessed_img.crop((
                             x,
                             y,
-                            x + ps,
-                            y + ps,
+                            x + 2 * ps,
+                            y + 2 * ps,
                         ))
                         converted_patch = convert_image(patch, gen).convert('RGBA')
                         converted_img.paste(
                             converted_patch.crop((
-                                ps // 4, ps // 4,
-                                ps // 4 + ps // 2, ps // 4 + ps // 2,
+                                ps // 2, ps // 2,
+                                ps // 2 + ps, ps // 2 + ps,
                             )),
                             (x, y),
                         )
