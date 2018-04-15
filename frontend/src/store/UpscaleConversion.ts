@@ -105,7 +105,7 @@ export class UpscaleTask extends Task<DataUrlImage> {
         );
         return 100 * (done / all);
     }
-    
+
     @action.bound
     private async scale2x(src: DataUrlImage): Promise<DataUrlImage> {
         return DataUrlImage.fromTf(upsample_nearest_neighbor(await src.toTf()));
@@ -147,10 +147,10 @@ export class UpscaleTask extends Task<DataUrlImage> {
             (convertedWidth - dstWidth) / 2,
             0,
         ], [
-            dstHeight,
-            dstWidth,
-            convertedChannel,
-        ]));
+                dstHeight,
+                dstWidth,
+                convertedChannel,
+            ]));
     }
 }
 
@@ -244,8 +244,22 @@ export class UpscaleConversionFlow {
 
     @computed
     get allFinished() {
-        return Object.values(this._tasks).every((task) => task.state.status === Task.SUCCESS);
+        return Object.values(this._tasks).every((task) => task !== null && task.state.status === Task.SUCCESS);
     }
+
+    @computed
+    get maxSize() {
+        return Object.values(this._tasks).reduce((acc, task) =>
+            (task === null || task.state.status !== Task.SUCCESS)
+                ? acc
+                : {
+                    width: Math.max(acc.width, task.state.result.width),
+                    height: Math.max(acc.height, task.state.result.height),
+                },
+            { width: 0, height: 0 },
+        );
+    }
+
 
     @action.bound
     private async runTask<K extends keyof UpscaleConversionFlow.StageDef>(id: K, task: NonNullable<UpscaleConversionFlow.StageDef[K]>) {
@@ -283,7 +297,7 @@ export class UpscaleConversionFlow {
 }
 
 export namespace UpscaleConversionFlow {
-    export interface StageDef {
+    export type StageDef = {
         load: Task<DataUrlImage> | null;
         scale2x: Task<DataUrlImage> | null;
         upscale: UpscaleTask | null;

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react"
 import { UpscaleConversionList, UpscaleConversionFlow, UpscaleTask } from "../store/UpscaleConversion";
-import { Row, Panel, Col, Well, Glyphicon, Button, ProgressBar, Tabs, Tab, Nav, NavItem } from "react-bootstrap";
+import { Row, Panel, Col, Well, Glyphicon, Button, ProgressBar, Tabs, Tab, Nav, NavItem, Alert } from "react-bootstrap";
 import { Loading } from "../component/Loading";
 import { DataUrlImage } from "../store/Image";
 import { Task } from "../store/Task";
@@ -80,7 +80,51 @@ export const RunningUpscaleTaskPreview = observer(({ task }: { task: UpscaleTask
     );
 });
 
-export const LoadTaskContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
+export const LoadTaskPreviewContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
+    if (task === null) {
+        return null;
+    }
+    switch (task.state.status) {
+        case Task.PENDING:
+        case Task.RUNNING:
+        case Task.FAILURE:
+            return null;
+        case Task.SUCCESS:
+            return <img src={task.state.result.dataUrl} />;
+    }
+});
+
+export const Scale2xTaskPreviewContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
+    if (task === null) {
+        return null;
+    }
+    switch (task.state.status) {
+        case Task.PENDING:
+        case Task.RUNNING:
+        case Task.FAILURE:
+            return null;
+        case Task.SUCCESS:
+            return <img src={task.state.result.dataUrl} />;
+    }
+});
+
+
+export const UpscaleTaskPreviewContainer = observer(({ task }: { task: UpscaleTask | null }) => {
+    if (task === null) {
+        return null;
+    }
+    switch (task.state.status) {
+        case Task.PENDING:
+            return null;
+        case Task.RUNNING:
+        case Task.FAILURE:
+            return <RunningUpscaleTaskPreview task={task} />;
+        case Task.SUCCESS:
+            return <img src={task.state.result.dataUrl} />;
+    }
+});
+
+export const LoadTaskProgressContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
     if (task === null) {
         return <ProgressBar active={false} now={0} />;
     }
@@ -90,13 +134,13 @@ export const LoadTaskContainer = observer(({ task }: { task: Task<DataUrlImage> 
         case Task.RUNNING:
             return <ProgressBar active={true} now={100} label={"ファイルの読み込み中・・・"}></ProgressBar>;
         case Task.FAILURE:
-            return <div>ファイルの読み込みに失敗しました: {task.state.error.message} </div>
+            return <Alert bsStyle="danger">ファイルの読み込みに失敗しました: {task.state.error.message} </Alert>
         case Task.SUCCESS:
-            return <img src={task.state.result.dataUrl} />;
+            return null;
     }
 });
 
-export const Scale2xTaskContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
+export const Scale2xTaskProgressContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
     if (task === null) {
         return <ProgressBar active={false} now={0} />;
     }
@@ -106,14 +150,14 @@ export const Scale2xTaskContainer = observer(({ task }: { task: Task<DataUrlImag
         case Task.RUNNING:
             return <ProgressBar active={true} now={100} label={"処理中・・・"}></ProgressBar>;
         case Task.FAILURE:
-            return <div>処理に失敗しました: {task.state.error.message} </div>
+            return <Alert bsStyle="danger">処理に失敗しました: {task.state.error.message} </Alert>
         case Task.SUCCESS:
-            return <img src={task.state.result.dataUrl} />;
+            return null;
     }
 });
 
 
-export const UpscaleTaskContainer = observer(({ task }: { task: UpscaleTask | null }) => {
+export const UpscaleTaskProgressContainer = observer(({ task }: { task: UpscaleTask | null }) => {
     if (task === null) {
         return <ProgressBar active={true} now={0} />;
     }
@@ -121,16 +165,26 @@ export const UpscaleTaskContainer = observer(({ task }: { task: UpscaleTask | nu
         case Task.PENDING:
             return <ProgressBar active={true} now={0} />;
         case Task.RUNNING:
-            return (
-                <div>
-                    <ProgressBar active={true} now={task.progress} />
-                    <RunningUpscaleTaskPreview task={task} />
-                </div>
-            );
+            return <ProgressBar active={true} now={task.progress} />;
         case Task.FAILURE:
-            return <div>処理に失敗しました: {task.state.error.message} </div>
+            return <Alert bsStyle="danger">処理に失敗しました: {task.state.error.message} </Alert>
         case Task.SUCCESS:
-            return <img src={task.state.result.dataUrl} />;
+            return null;
+    }
+});
+
+export const UpscaleConversionFlowProgressContainer = observer(({ store }: { store: UpscaleConversionFlow }) => {
+    const stage = store.currentStage;
+    if (stage === null) {
+        return null;
+    }
+    switch (stage.id) {
+        case "load":
+            return <LoadTaskProgressContainer task={stage.task} />
+        case "scale2x":
+            return <Scale2xTaskProgressContainer task={stage.task} />
+        case "upscale":
+            return <UpscaleTaskProgressContainer task={stage.task} />
     }
 });
 
@@ -148,20 +202,29 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
                         onSelect={(key: any) => this.props.store.selectStage(key)}
                     >
                         <div>
-                            <Nav bsStyle="pills" style={{display: "flex", justifyContent: "center", alignItems: "center"}}>
-                                <NavItem eventKey="load">元画像</NavItem>
-                                <NavItem eventKey="scale2x">元画像(2x)</NavItem>
-                                <NavItem eventKey="upscale">変換結果</NavItem>
-                            </Nav>
-                            <Tab.Content animation={false} style={{marginTop: "20px", display: "flex", justifyContent: "center", alignItems: "center"}}>
+                            {!this.props.store.allFinished
+                            ? (
+                                <UpscaleConversionFlowProgressContainer store={this.props.store} />
+                            ) : (
+                                <Nav bsStyle="pills" style={{display: "flex", justifyContent: "center", alignItems: "center"}}>
+                                    <NavItem eventKey="load">元画像</NavItem>
+                                    <NavItem eventKey="scale2x">元画像(2x)</NavItem>
+                                    <NavItem eventKey="upscale">変換結果</NavItem>
+                                </Nav>
+                            )}
+                            <Tab.Content animation={false} style={{
+                                marginTop: "20px",
+                                display: "flex", justifyContent: "center", alignItems: "center",
+                                minHeight: `${this.props.store.maxSize.height + 10}px`,
+                            }}>
                                 <Tab.Pane eventKey={"load"}>
-                                    <LoadTaskContainer task={this.props.store.getTask("load")} />
+                                    <LoadTaskPreviewContainer task={this.props.store.getTask("load")} />
                                 </Tab.Pane>
                                 <Tab.Pane eventKey={"scale2x"}>
-                                    <Scale2xTaskContainer task={this.props.store.getTask("scale2x")} />
+                                    <Scale2xTaskPreviewContainer task={this.props.store.getTask("scale2x")} />
                                 </Tab.Pane>
                                 <Tab.Pane eventKey={"upscale"}>
-                                    <UpscaleTaskContainer task={this.props.store.getTask("upscale")} />
+                                    <UpscaleTaskPreviewContainer task={this.props.store.getTask("upscale")} />
                                 </Tab.Pane>
                             </Tab.Content>
                         </div>
