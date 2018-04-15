@@ -71,11 +71,11 @@ def main():
         help='output images for compare',
     )
     parser.add_argument(
-        '--without_transparent', action='store_false', default=True,
-        help='replace color on (0, 0) to transparent color',
+        '--transparent', action='store_true', default=False,
+        help='assume that color on (0, 0) is transparent color',
     )
     parser.add_argument(
-        '--patch_size', '-p', type=int,
+        '--patch_size', '-p', type=int, default=32,
     )
     parser.add_argument(
         '--generator', type=str, required=True,
@@ -119,7 +119,7 @@ def main():
         with Image.open(image_path) as img:
             oW, oH = img.size
             img = img.convert('RGBA')
-            if not args.without_transparent:
+            if args.transparent:
                 img = transparent_background(img)
             
             if args.mode == 'down':
