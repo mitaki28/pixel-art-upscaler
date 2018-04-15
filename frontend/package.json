@@ -27,7 +27,6 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^0.8.0",
-    "fp-ts": "^1.2.0",
     "jimp": "^0.2.28",
     "keras-js": "^1.0.3",
     "loaders.css": "^0.1.2",

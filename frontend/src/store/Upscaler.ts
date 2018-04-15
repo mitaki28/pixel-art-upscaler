@@ -5,7 +5,6 @@ import * as WebDNN from "webdnn";
 import * as KerasJS from "keras-js";
 import * as tf from '@tensorflow/tfjs';
 import SymbolicFloat32Array from "webdnn/symbolic_typed_array/symbolic_float32array";
-import { Either, left, right } from "fp-ts/lib/Either";
 import { transparentBackgroundColor, adjustSizeToPowerOf2, imageToChwFloat32Array, chwFloat32ArrayToImage, imageToHwcFloat32Array, hwcFloat32ArrayToImage } from "../util/image";
 import { DataUrlImage } from "./Image";
 

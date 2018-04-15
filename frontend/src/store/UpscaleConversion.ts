@@ -4,7 +4,6 @@ import { generateRandomString } from "../util/random";
 import * as Jimp from "jimp";
 import { Upscaler } from "./Upscaler";
 import { Task } from "./Task";
-import { Either, right, left } from "fp-ts/lib/Either";
 import { DataUrlImage } from "./Image";
 import { downsample_nearest_neighbor, upsample_nearest_neighbor } from "../util/tensor";
 

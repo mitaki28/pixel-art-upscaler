@@ -6,51 +6,6 @@ import { Loading } from "../component/Loading";
 import { DataUrlImage } from "../store/Image";
 import { Task } from "../store/Task";
 
-export const SimpleImageComponent = (props: { result: DataUrlImage }) => (
-    <img src={props.result.dataUrl} />
-);
-
-export const GenericErrorComponent = (props: { message: string }) => (es: { error: Error }) => (
-    <div>{props.message}: {es.error.message}</div>
-);
-
-export interface TaskContainerProps {
-    task: Task<DataUrlImage> | null;
-    title: string;
-    resultComponent: React.ComponentType<{ result: DataUrlImage }>
-    errorComponent: React.ComponentType<{ error: Error }>;
-}
-
-@observer
-export class TaskContainer extends React.Component<TaskContainerProps> {
-    renderTaskStatus() {
-        if (this.props.task == null) {
-            return <Loading />;
-        }
-        const ErrorComponent = this.props.errorComponent;
-        switch (this.props.task.state.status) {
-            case Task.PENDING:
-            case Task.RUNNING:
-                return <Loading />
-            case Task.FAILURE:
-                return <ErrorComponent error={this.props.task.state.error} />;
-            case Task.SUCCESS:
-                return <img src={this.props.task.state.result.dataUrl} />;
-        }
-    }
-
-    render() {
-        return (
-            <Panel style={{ width: "100%", textAlign: "center" }}>
-                <Panel.Heading>{this.props.title}</Panel.Heading>
-                <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
-                    {this.renderTaskStatus()}
-                </Panel.Body>
-            </Panel>
-        );
-    }
-}
-
 export const RunningUpscaleTaskPreview = observer(({ task }: { task: UpscaleTask }) => {
     if (task.preprocessedImagePreview === null) {
         return null;
@@ -229,44 +184,6 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
                             </Tab.Content>
                         </div>
                     </Tab.Container>
-                    {/* {(() => {
-                        const stage = this.props.store.selectedStage;
-                        if (stage === null) {
-                            return null;
-                        }
-                        switch (stage.id) {
-                            case "load":
-                                return <LoadTaskContainer task={stage.task} />
-                            case "scale2x":
-                                return <Scale2xTaskContainer task={stage.task} />
-                            case "upscale":
-                                return <UpscaleTaskContainer task={stage.task} />
-                        }
-                    })()} */}
-                    {/* <Col md={12}>
-                        <TaskContainer
-                            title="元画像"
-                            task={this.props.store.loadImageTask}
-                            resultComponent={SimpleImageComponent}
-                            errorComponent={GenericErrorComponent({ message: "ファイルの読み込みに失敗しました" })}
-                        />
-                    </Col>
-                    <Col md={12}>
-                        <TaskContainer
-                            title="元画像(x2)"
-                            task={this.props.store.loadImageTask}
-                            resultComponent={SimpleImageComponent}
-                            errorComponent={GenericErrorComponent({ message: "画像の拡大に失敗しました" })}
-                        />
-                    </Col> */}
-                    {/* <Col md={12}>
-                        <Panel style={{ width: "100%", textAlign: "center" }}>
-                            <Panel.Heading>変換後</Panel.Heading>
-                            <Panel.Body style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "black", color: "white" }}>
-                                {this.renderConvertedImage()}
-                            </Panel.Body>
-                        </Panel>
-                    </Col> */}
                 </Panel.Body>
             </Panel>
         );

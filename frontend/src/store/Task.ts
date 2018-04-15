@@ -1,5 +1,4 @@
 import { observable, action, comparer, computed } from "mobx";
-import { Either } from "fp-ts/lib/Either";
 
 export class Task<R> {
     @observable private _state: Task.State<R>;
