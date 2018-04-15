@@ -103,7 +103,7 @@ export const Scale2xTaskProgressContainer = observer(({ task }: { task: Task<Dat
         case Task.PENDING:
             return <ProgressBar active={false} now={0} />;
         case Task.RUNNING:
-            return <ProgressBar active={true} now={100} label={"処理中・・・"}></ProgressBar>;
+            return <ProgressBar active={true} now={100} label={"準備中・・・"}></ProgressBar>;
         case Task.FAILURE:
             return <Alert bsStyle="danger">処理に失敗しました: {task.state.error.message} </Alert>
         case Task.SUCCESS:
@@ -120,7 +120,11 @@ export const UpscaleTaskProgressContainer = observer(({ task }: { task: UpscaleT
         case Task.PENDING:
             return <ProgressBar active={true} now={0} />;
         case Task.RUNNING:
-            return <ProgressBar active={true} now={task.progress} />;
+            if (Number.isNaN(task.progress)) {
+                return <ProgressBar active={true} now={100} label={"準備中・・・"} />;
+            } else {
+                return <ProgressBar active={true} now={task.progress} />;
+            }
         case Task.FAILURE:
             return <Alert bsStyle="danger">処理に失敗しました: {task.state.error.message} </Alert>
         case Task.SUCCESS:
