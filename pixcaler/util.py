@@ -1,6 +1,8 @@
+import random
+import math
+
 import numpy as np
 
-import random
 from PIL import Image
 from pathlib import Path
 from chainercv.transforms import center_crop
@@ -34,3 +36,25 @@ def downscale_random_nearest_neighbor(img):
 def align_2x_nearest_neighbor_scaled_image(img):
     w, h = img.size
     return img.resize((w // 2, h // 2), Image.NEAREST).resize((w, h), Image.NEAREST)
+
+def pad_by_multiply_of(img, factor=64, add=0):
+    img = np.asarray(img)
+    h, w, c = img.shape
+    nw = factor * math.ceil(w / factor)
+    nh = factor * math.ceil(h / factor)
+    ph = nh - h
+    pw = nw - w
+    img = np.pad(img, [
+        (ph // 2 + add, (ph - ph // 2) + add),
+        (pw // 2 + add, (pw - pw // 2) + add),
+        (0, 0)
+    ], mode='reflect')
+    return Image.fromarray(img).convert('RGBA')
+
+def transparent_background(img):
+    background_color = img.getpixel((0, 0))
+    for i in range(img.size[0]):
+        for j in range(img.size[1]):
+            if img.getpixel((i, j)) == background_color:
+                img.putpixel((i, j), (0, 0, 0, 0))
+    return img
