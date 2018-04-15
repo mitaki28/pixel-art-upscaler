@@ -23,12 +23,10 @@ def out_image(gen, n, dst):
         
         for it in range(n):
             batch = trainer.updater.get_iterator('test').next()
-            batchsize = len(batch)
-            assert batchsize == 1
 
             x_in = Variable(xp.asarray([b[0] for b in batch]).astype('f'))
             t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
-            x_out, _ = gen(x_in)
+            x_out = gen(x_in)
     
             x_in = chainer.cuda.to_cpu(x_in.data)[0,:]
             t_out = chainer.cuda.to_cpu(t_out.data)[0,:]
@@ -51,3 +49,54 @@ def out_image(gen, n, dst):
     return make_image
 
 
+
+def out_image_cycle(gen_up, gen_down, n, dst):
+    @chainer.training.make_extension()
+    def make_image(trainer):
+        xp = gen_up.xp
+        n_pattern = 6
+        n_images = n * n_pattern
+
+        rows = n
+        cols = n_pattern
+        
+        ret = []
+        
+        gen_up.fix_broken_batchnorm()
+        gen_down.fix_broken_batchnorm()
+        for it in range(n):
+            batch_l = trainer.updater.get_iterator('testA').next()
+            batch_s = trainer.updater.get_iterator('testB').next()
+            x_l = Variable(xp.asarray([b[1] for b in batch_l]).astype('f'))
+            x_s = Variable(xp.asarray([b[0] for b in batch_s]).astype('f'))
+            with chainer.using_config('train', False), chainer.using_config('enable_back_prop', False):
+                x_ls = gen_down(x_l)
+                x_lsl = gen_up(x_ls)
+                x_sl = gen_up(x_s)
+                x_sls = gen_down(x_sl)
+    
+            x_l = chainer.cuda.to_cpu(x_l.data)[0,:]
+            x_ls = chainer.cuda.to_cpu(x_ls.data)[0,:]
+            x_lsl = chainer.cuda.to_cpu(x_lsl.data)[0,:]
+            x_s = chainer.cuda.to_cpu(x_s.data)[0,:]
+            x_sl = chainer.cuda.to_cpu(x_sl.data)[0,:]
+            x_sls = chainer.cuda.to_cpu(x_sls.data)[0,:]
+            ret.append(x_l)
+            ret.append(x_ls)
+            ret.append(x_lsl)
+            ret.append(x_s)
+            ret.append(x_sl)
+            ret.append(x_sls)
+        
+        C, H, W = ret[0].shape
+        x = np.asarray(ret).reshape((rows, cols, C, H, W)).transpose((2, 0, 3, 1, 4)).reshape((C, rows*H, cols*W))
+        
+        preview_dir = '{}/preview'.format(dst)
+        preview_path = preview_dir + '/image_{:0>8}.png'.format(trainer.updater.iteration)
+        current_path = preview_dir + '/image_current.png'
+        if not os.path.exists(preview_dir):
+            os.makedirs(preview_dir)
+        img = chw_array_to_img(x)
+        img.save(preview_path)
+        img.save(current_path)
+    return make_image

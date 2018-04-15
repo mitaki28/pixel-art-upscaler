@@ -93,7 +93,7 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
         target = random_flip(target, x_random=True)
         if self.random_nn:
             source = resize(
-                downscale_random_nearest_neighbor(target),
+                downscale_random_nearest_neighbor(target.copy()),
                 (self.fine_size, self.fine_size), Image.NEAREST,
             )
         else:
@@ -110,3 +110,35 @@ class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
     def get_example(self, i):
         source, target = super().get_example(i)
         return target, source
+
+class Single32Dataset(dataset_mixin.DatasetMixin):
+    def __init__(self, target_dir, random_nn=False, fine_size=64):
+        self.target_dir = Path(target_dir)
+        self.filepaths = list(self.target_dir.glob("*.png"))
+        self.fine_size = fine_size
+        print("{} images loaded".format(len(self.filepaths)))
+    
+    def __len__(self):
+        return len(self.filepaths)
+
+    # return (source, target)
+    def get_example(self, i):
+        with Image.open(str(self.filepaths[i])) as f:
+            target = img_to_chw_array(f)
+
+        target = random_crop(target, (self.fine_size, self.fine_size))
+        target = random_flip(target, x_random=True)
+        # randomize and alignment
+        source = resize(
+            downscale_random_nearest_neighbor(target.copy()),
+            (self.fine_size, self.fine_size), Image.NEAREST,
+        )
+        # alignment
+        target = resize(
+            resize(
+                target,
+                (self.fine_size // 2, self.fine_size // 2), Image.NEAREST,
+            ),
+            (self.fine_size, self.fine_size), Image.NEAREST,
+        )
+        return source, target

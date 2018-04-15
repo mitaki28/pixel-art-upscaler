@@ -130,9 +130,7 @@ class Generator(chainer.Chain):
         )
 
     def __call__(self, x_in):
-        hs = self.enc(x_in)
-        x_out = self.dec(hs)
-        return (x_out, hs)
+        return self.dec(self.enc(x_in))
 
     def fix_broken_batchnorm(self):
         '''
@@ -142,12 +140,10 @@ class Generator(chainer.Chain):
         for i in range(1, 8):
             cbr = self.enc['c{}'.format(i)]
             if xp.isnan(cbr.batchnorm.avg_var[-1]):
-                print('enc.c{} is broken'.format(i))
                 cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)
         for i in range(0, 7):
             cbr = self.dec['c{}'.format(i)]
             if xp.isnan(cbr.batchnorm.avg_var[-1]):
-                print('dec.c{} is broken'.format(i))
                 cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)        
 
 class Discriminator(chainer.Chain):
@@ -170,3 +166,10 @@ class Discriminator(chainer.Chain):
         h = self.c3(h)
         h = self.c4(h)
         return h
+
+class Pix2Pix(chainer.Chain):
+    def __init__(self, in_ch, out_ch, flat=True, base_ch=64):
+        super().__init__(
+            gen=Generator(in_ch, out_ch, base_ch=base_ch),
+            dis=Discriminator(in_ch, out_ch, base_ch=base_ch, flat=flat),
+        )

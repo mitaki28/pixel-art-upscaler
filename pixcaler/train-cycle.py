@@ -14,13 +14,13 @@ from chainerui.extensions import CommandsExtension
 
 from pixcaler.net import Discriminator
 from pixcaler.net import Generator, Pix2Pix
-from pixcaler.updater import Pix2PixUpdater
-from pixcaler.dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
-from pixcaler.visualizer import out_image
+from pixcaler.updater import CycleUpdater
+from pixcaler.dataset import AutoUpscaleDataset, Single32Dataset
+from pixcaler.visualizer import out_image_cycle
 
 def main():
     parser = argparse.ArgumentParser(
-        description='chainer implementation of model',
+        description='chainer implementation of pix2pix',
     )
     parser.add_argument(
         '--batchsize', '-b', type=int, default=1,
@@ -62,18 +62,6 @@ def main():
         '--preview_interval', type=int, default=100,
         help='Interval of previewing generated image',    
     )
-    parser.add_argument(
-        '--mode', required=True, choices=('up', 'down'),
-        help='training mode',
-    )
-    parser.add_argument(
-        '--use_random_nn_downscale', action='store_true', default=False,
-        help='downscal by sampling 4-nearest pixel randomly',
-    )
-    parser.add_argument(
-        '--flat_discriminator', action='store_true', default=False,
-        help='(deprecated)',
-    )    
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -81,14 +69,14 @@ def main():
     print('# Minibatch-size: {}'.format(args.batchsize))
     print('# epoch: {}'.format(args.epoch))
     print('')
-
-    model = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator)
-    gen = model.gen
-    dis = model.dis
     
+    upscaler = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch)
+    downscaler = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch)
+
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-        model.to_gpu()  # Copy the model to the GPU
+        upscaler.to_gpu()
+        downscaler.to_gpu()
 
     # Setup an optimizer
     def make_optimizer(model, alpha=0.0002, beta1=0.5):
@@ -96,42 +84,48 @@ def main():
         optimizer.setup(model)
         optimizer.add_hook(chainer.optimizer.WeightDecay(0.00001), 'hook_dec')
         return optimizer
-    opt_gen = make_optimizer(gen)
-    opt_dis = make_optimizer(dis)
+    opt_gen_up = make_optimizer(upscaler.gen)
+    opt_dis_up = make_optimizer(upscaler.dis)
 
-    if args.mode == 'up':
-        print('# upscale learning with automatically generated images')
-        train_d = AutoUpscaleDataset(
-            "{}/main".format(args.dataset),
-            random_nn=args.use_random_nn_downscale,
-        )
-        test_d = AutoUpscaleDataset(
-            "{}/test".format(args.dataset),        
-            random_nn=False,
-        )
-    elif args.mode == 'down':
-        print('# downscale learning')
-        train_d = PairDownscaleDataset(
-            "{}/main/target".format(args.dataset),
-            "{}/main/source".format(args.dataset),            
-        )
-        test_d = AutoUpscaleDatasetReverse(
-            "{}/test".format(args.dataset),
-        )
+    opt_gen_down = make_optimizer(downscaler.gen)
+    opt_dis_down = make_optimizer(downscaler.dis)
 
-    train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
-    test_iter = chainer.iterators.SerialIterator(test_d, 1)
+
+    train_l_d = AutoUpscaleDataset(
+        "{}/trainA".format(args.dataset),
+        random_nn=True,
+    )
+    train_s_d = Single32Dataset(
+        "{}/trainB".format(args.dataset),
+    )
+    test_l_d = AutoUpscaleDataset(
+        "{}/trainA".format(args.dataset),
+        random_nn=False,
+    )
+    test_s_d = Single32Dataset(
+        "{}/trainB".format(args.dataset),
+    )
+
+    train_l_iter = chainer.iterators.SerialIterator(train_l_d, args.batchsize)
+    test_l_iter = chainer.iterators.SerialIterator(test_l_d, 1)
+    train_s_iter = chainer.iterators.SerialIterator(train_s_d, args.batchsize)
+    test_s_iter = chainer.iterators.SerialIterator(test_s_d, 1)
  
     # Set up a trainer
-    updater = Pix2PixUpdater(
-        model=model,
+    updater = CycleUpdater(
+        upscaler=upscaler,
+        downscaler=downscaler,
         iterator={
-            'main': train_iter,
-            'test': test_iter,
+            'main': train_l_iter,
+            'trainB': train_s_iter,
+            'testA': test_l_iter,            
+            'testB': test_s_iter,
         },
         optimizer={
-            'gen': opt_gen,
-            'dis': opt_dis,
+            'gen_up': opt_gen_up,
+            'dis_up': opt_dis_up,
+            'gen_down': opt_gen_down,
+            'dis_down': opt_dis_down,
         },
         device=args.gpu,
     )
@@ -145,24 +139,48 @@ def main():
         filename='snapshot_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
+    
+    logging_keys = []
     trainer.extend(extensions.snapshot_object(
-        model.gen, 'gen_iter_{.updater.iteration}.npz'),
+        upscaler.gen, 'gen_up_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
     trainer.extend(extensions.snapshot_object(
-        model.dis, 'dis_iter_{.updater.iteration}.npz'),
+        upscaler.dis, 'dis_up_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
+    logging_keys += [
+        'gen_up/loss_adv',
+        'gen_up/loss_rec',
+        'dis_up/loss_real',
+        'dis_up/loss_fake',
+    ]
+
+    trainer.extend(extensions.snapshot_object(
+        downscaler.gen, 'gen_down_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
+    trainer.extend(extensions.snapshot_object(
+        downscaler.dis, 'dis_down_iter_{.updater.iteration}.npz'),
+        trigger=snapshot_interval,
+    )
+    logging_keys += [
+        'gen_down/loss_adv',
+        'gen_down/loss_rec',
+        'dis_down/loss_real',
+        'dis_down/loss_fake',
+    ]
+
     trainer.extend(extensions.LogReport(trigger=preview_interval))
     trainer.extend(extensions.PlotReport(
-        ['gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',],
+        logging_keys,
         trigger=preview_interval,
     ))
-    trainer.extend(extensions.PrintReport([
-        'epoch', 'iteration', 'gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',
-    ]), trigger=display_interval)
+    trainer.extend(extensions.PrintReport(
+        ['epoch', 'iteration'] + logging_keys,
+    ), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
-    trainer.extend(out_image(gen, 8, args.out), trigger=preview_interval)
+    trainer.extend(out_image_cycle(upscaler.gen, downscaler.gen, 8, args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 
     if args.resume:
