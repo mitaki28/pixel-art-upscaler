@@ -8,7 +8,7 @@
 
 (変換元素材: [白螺子屋](http://hi79.web.fc2.com/)様, 学習データ: [カミソリエッジ](https://razor-edge.work/material/fsmchcv/) 様【オリジナルの素材を配布していたのは First Seed Material 様（サイト閉鎖）】）
 
-32x32〜16x16程度のキャラチップを前提としたドット絵の拡大ツールです。
+ドット絵に特化した拡大ツールです。
 
 [既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms)よりもリアルな拡大が可能ですが、画像が歪んだり不自然な拡大がされることも結構あり、まだ実験段階です。
 
@@ -32,9 +32,9 @@ pip install cupy
 
 ### データセット
 1. [カミソリエッジ](https://razor-edge.work/material/fsmchcv/)様のサイトからデータをダウンロードします
-1. 以下のコマンドを実行すると `image/fsm/main` に学習用のデータが生成されます
+1. ダウンロードして画像を展開したディレクトリに対して、以下のコマンドを実行すると `image/fsm/main` に学習用のデータが生成されます
 ```
-python tool/trim-chartip.py extract-fsm ../trim-chartip/src/fsm/**/*.png
+python tool/trim-chartip.py extract-fsm /path/to/material/dir/**/*.png
 ```
 1. `image/fsm/test` については、main からコピー,移動するなり、別の素材を用意するなりして、同様の形式(80x80; RGBA; PNG)の素材を適当に入れてください。
 
@@ -106,7 +106,6 @@ python -m pixcaler.run --model-dir=/path/to/model --iter=1000000 /path/to/image1
 ### 備考
 * batchsize はマシンスペックに余裕があっても敢えて1にすべきです(効果あり; batchsize=4のときと比較して l1-loss の収束に0.5(lam1=100 のとき)程度の差がありました)
     * ただし、現状、 chainer のバグ？で、 batchsize=1 のとき、一部の BatchNormalization の重みが nan になってしまい、 test モードでの計算ができなくなるようです
-        * Web アプリ版のモデルでは、 nan になった重みを無理やり 0 に補正しているため、精度が落ちているように見えます
     * batchsize=1 のときの BatchNormalization は InstanceNormalization と等価になり、性質が変わるとのことです
         * https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/issues/27
 

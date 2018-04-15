@@ -8,13 +8,13 @@ import { Grid, Row } from "react-bootstrap";
 export class UpscaleConversionListContainer extends React.Component<{ store: UpscaleConversionList }> {
     render() {
         return (
-            <Grid>
+            <div>
                 {
                     this.props.store.conversions.map((conversion) => 
-                        <Row><UpscaleConversionContainer key={conversion.id} store={conversion} /></Row>
+                        <UpscaleConversionContainer key={conversion.id} store={conversion} />
                     )
                 }
-            </Grid>
+            </div>
         );
     }
 }

@@ -1,64 +1,19 @@
 
 import { observable, computed, action } from "mobx";
-import { Converter, ConversionError } from "./Converter";
 import * as Jimp from "jimp";
 import * as WebDNN from "webdnn";
 import * as KerasJS from "keras-js";
 import * as tf from '@tensorflow/tfjs';
 import SymbolicFloat32Array from "webdnn/symbolic_typed_array/symbolic_float32array";
-import { Either, left, right } from "fp-ts/lib/Either";
 import { transparentBackgroundColor, adjustSizeToPowerOf2, imageToChwFloat32Array, chwFloat32ArrayToImage, imageToHwcFloat32Array, hwcFloat32ArrayToImage } from "../util/image";
+import { DataUrlImage } from "./Image";
 
-const MIN_SIZE = 32;
-const MAX_HEIGHT = 32;
-const MAX_WIDTH = 32;
+export abstract class Upscaler {
 
-export abstract class Upscaler implements Converter {
-    protected abstract predict(img: Jimp.Jimp): Promise<Either<ConversionError, Jimp.Jimp>>;
+    protected abstract predict(img: Jimp.Jimp): Promise<Jimp.Jimp>;
     @action.bound
-    async convert(src: string): Promise<Either<ConversionError, string>> {
-        let img: Jimp.Jimp;
-        try {
-            img = await Jimp.read(src);
-        } catch (e) {
-            return left(ConversionError.failedToLoad(e));
-        }
-
-        const srcHeight = img.bitmap.height;
-        const srcWidth = img.bitmap.width;
-        if (srcHeight > MAX_HEIGHT || srcWidth > MAX_WIDTH) {
-            return left(ConversionError.tooLargeResolution({ width: MAX_WIDTH, height: MAX_HEIGHT }))
-        }
-
-        transparentBackgroundColor(img);
-        const r = adjustSizeToPowerOf2(img, MIN_SIZE);
-        const preprocessedSize = r * 2;
-        img.resize(preprocessedSize, preprocessedSize, Jimp.RESIZE_NEAREST_NEIGHBOR);
-        img.contain(preprocessedSize + 1, preprocessedSize + 1, Jimp.HORIZONTAL_ALIGN_RIGHT | Jimp.VERTICAL_ALIGN_BOTTOM);
-        img.crop(0, 0, preprocessedSize, preprocessedSize);
-
-        const result = await this.predict(img);
-        if (result.isLeft()) {
-            return left(result.value);
-        }
-
-        const convertedHeight = 2 * srcHeight;
-        const convertedWidth = 2 * srcWidth;
-        const convertedImage = result.value.crop(
-            (preprocessedSize - convertedWidth) / 2,
-            (preprocessedSize - convertedHeight) / 2,
-            convertedWidth,
-            convertedHeight,
-        );
-
-        return new Promise<Either<ConversionError, string>>((resolve, reject) => {
-            (convertedImage as any).getBase64(Jimp.MIME_PNG, (error: any, dst: string) => {
-                if (error) {
-                    reject(error);
-                }
-                resolve(right<ConversionError, string>(dst));
-            });
-        });
+    async convert(src: DataUrlImage): Promise<DataUrlImage> {
+        return DataUrlImage.fromJimp(await this.predict(await src.toJimp()));
     }
 }
 
@@ -76,18 +31,14 @@ export class WebDNNUpscaler extends Upscaler {
     }
 
     @action.bound
-    protected async predict(img: Jimp.Jimp): Promise<Either<ConversionError, Jimp.Jimp>> {
+    protected async predict(img: Jimp.Jimp): Promise<Jimp.Jimp> {
         const width = img.bitmap.width;
         const height = img.bitmap.height;
         const x = imageToChwFloat32Array(img, 4).map((v) => v / 127.5 - 1.0);
         this._inputImage.set(x);
-        try {
-            await this._runner.run();
-        } catch (e) {
-            return left(ConversionError.failedToConvert(e));
-        }
+        await this._runner.run();
         const y = this._outputImage.toActual().map((v) => Math.min(Math.max((v + 1.0) * 127.5, 0.0), 255.0));
-        return right(chwFloat32ArrayToImage(y, 4, height, width));
+        return chwFloat32ArrayToImage(y, 4, height, width);
     }
 }
 
@@ -101,22 +52,16 @@ export class KerasUpscaler extends Upscaler {
     }
 
     @action.bound
-    async predict(img: Jimp.Jimp): Promise<Either<ConversionError, Jimp.Jimp>> {
+    async predict(img: Jimp.Jimp): Promise<Jimp.Jimp> {
         const x = imageToHwcFloat32Array(img, 4).map((v) => v / 127.5 - 1.0);
-
-        let y: Float32Array;
-        try {
-            y = (await this._model.predict({"input_1": x})).output_gen;
-        } catch (e) {
-            return left(ConversionError.failedToConvert(e));
-        }
+        const y: Float32Array = (await this._model.predict({ "input_1": x })).output_gen;
         const convertedImage = hwcFloat32ArrayToImage(
             y.map((v) => Math.min(Math.max(v * 127.5 + 127.5, 0.0), 255.0)),
             4,
             img.bitmap.width,
             img.bitmap.height,
         );
-        return right(convertedImage);
+        return convertedImage;
     }
 }
 
@@ -130,25 +75,20 @@ export class TfjsUpscaler extends Upscaler {
     }
 
     @action.bound
-    async predict(img: Jimp.Jimp): Promise<Either<ConversionError, Jimp.Jimp>> {
+    async predict(img: Jimp.Jimp): Promise<Jimp.Jimp> {
         const width = img.bitmap.width
         const height = img.bitmap.height
         const x = imageToHwcFloat32Array(img, 4).map((v) => v / 127.5 - 1.0);
 
-        let y: Float32Array;
-        try {
-            const tensor = ((await this._model.predict(tf.tensor(x, [height, width, 4]))) as Array<tf.Tensor<tf.Rank>>)[0];
-            y = (await tensor.flatten().data() as Float32Array);
-        } catch (e) {
-            return left(ConversionError.failedToConvert(e));
-        }
+        const tensor = ((await this._model.predict(tf.tensor(x, [1, height, width, 4]))) as tf.Tensor<tf.Rank>);
+        const y = (await tensor.flatten().data() as Float32Array);
         const convertedImage = hwcFloat32ArrayToImage(
             y.map((v) => Math.min(Math.max(v * 127.5 + 127.5, 0.0), 255.0)),
             4,
             img.bitmap.width,
             img.bitmap.height,
         );
-        return right(convertedImage);
+        return convertedImage;
     }
 }
 

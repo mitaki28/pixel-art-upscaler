@@ -20,14 +20,13 @@
     "mobx-react-devtools": "^5.0.1",
     "style-loader": "^0.20.3",
     "ts-loader": "^4.1.0",
-    "typescript": "^2.7.2",
+    "typescript": "2.8.1",
     "webpack": "^4.2.0",
     "webpack-cli": "^2.0.13",
     "webpack-dev-server": "^3.1.1"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^0.8.0",
-    "fp-ts": "^1.2.0",
     "jimp": "^0.2.28",
     "keras-js": "^1.0.3",
     "loaders.css": "^0.1.2",

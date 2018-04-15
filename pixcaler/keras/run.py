@@ -114,7 +114,7 @@ class Pix2Pix(object):
         gen.save(str(out_path))
         if tfjs:
             import tensorflowjs as tfjs
-            tfjs.converters.save_pixcaler.keras.model(gen, out_path.parent)
+            tfjs.converters.save_keras_model(gen, out_path.parent)
         if kerasjs is not None:
             subprocess.check_call(['python', kerasjs, '-q', str(out_path)])
 
