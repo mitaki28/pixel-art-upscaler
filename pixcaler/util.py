@@ -1,5 +1,6 @@
 import random
 import math
+import itertools
 
 import numpy as np
 
@@ -58,3 +59,9 @@ def transparent_background(img):
             if img.getpixel((i, j)) == background_color:
                 img.putpixel((i, j), (0, 0, 0, 0))
     return img
+
+# https://stackoverflow.com/a/24527424
+def chunks(iterable, size):
+    iterator = iter(iterable)
+    for first in iterator:
+        yield itertools.chain([first], itertools.islice(iterator, size - 1))

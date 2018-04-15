@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 
 import chainer
-from pixcaler.util import chw_array_to_img, img_to_chw_array, align_2x_nearest_neighbor_scaled_image, pad_by_multiply_of
+from pixcaler.util import chw_array_to_img, img_to_chw_array, align_2x_nearest_neighbor_scaled_image, pad_by_multiply_of, chunks
 
 
 class NullConversionEventHandler:
@@ -24,19 +24,20 @@ class ChainerConverter(Converter):
     def get_input_size(self):
         return self.input_size
 
-    def __call__(self, img):
+    def __call__(self, imgs):
         xp = self.gen.xp
         
-        x = xp.asarray(img_to_chw_array(img))
-        x_in = chainer.Variable(x.reshape(1, *x.shape))
+        x = xp.asarray([img_to_chw_array(img) for img in imgs])
+        x_in = chainer.Variable(x)
         with chainer.using_config('train', False), chainer.using_config('enable_back_prop', False):
             x_out = self.gen(x_in)
 
-        return chw_array_to_img(chainer.cuda.to_cpu(x_out.data)[0])
+        return [chw_array_to_img(x) for x in chainer.cuda.to_cpu(x_out.data)]
 
 class PatchedExecuter:
-    def __init__(self, converter, is_alignment_required, handler=None):
+    def __init__(self, converter, is_alignment_required, batch_size, handler=None):
         self.patch_size = converter.get_input_size() // 2
+        self.batch_size = batch_size
         self.converter = converter
         self.is_alignment_required = is_alignment_required
         self.handler = NullConversionEventHandler() if handler is None else handler
@@ -53,18 +54,22 @@ class PatchedExecuter:
         converted_img = Image.new('RGBA', (
             img.size[0] - ps // 2 * 2,
             img.size[1] - ps // 2 * 2,
-        ))        
-        for i in range(n_i):
-            for j in range(n_j):
-                x = i * ps
-                y = j * ps
-                patch = img.crop((
-                    x,
-                    y,
-                    x + 2 * ps,
-                    y + 2 * ps,
-                ))
-                converted_patch = self.converter(patch)
+        ))
+        def _patch_generator():            
+            for i in range(n_i):
+                for j in range(n_j):
+                    x = i * ps
+                    y = j * ps
+                    yield (i, j, x, y), img.crop((
+                        x,
+                        y,
+                        x + 2 * ps,
+                        y + 2 * ps,
+                    ))
+        for chunk in chunks(_patch_generator(), self.batch_size):
+            cords, batch = map(list, zip(*chunk))
+            converted_batch = self.converter(batch)
+            for (i, j, x, y), converted_patch in zip(cords, converted_batch):
                 converted_img.paste(
                     converted_patch.crop((
                         ps // 2, ps // 2,
@@ -84,10 +89,11 @@ class PatchedExecuter:
 
 
 class Upscaler:
-    def __init__(self, converter, handler=None):
+    def __init__(self, converter, batch_size=1, handler=None):
         self.executor = PatchedExecuter(
             converter,
             is_alignment_required=True,
+            batch_size=batch_size,
             handler=handler,
         )
 
@@ -99,10 +105,11 @@ class Upscaler:
         return self.executor(img)
 
 class Downscaler:
-    def __init__(self, converter, handler=None):
+    def __init__(self, converter, batch_size=1, handler=None):
         self.executor = PatchedExecuter(
             converter,
             is_alignment_required=False,
+            batch_size=batch_size,
             handler=handler,
         )
 

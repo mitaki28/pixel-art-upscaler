@@ -33,6 +33,9 @@ def main():
         '--patch_size', '-p', type=int, default=32,
     )
     parser.add_argument(
+        '--batch_size', '-b', type=int, default=4,
+    )
+    parser.add_argument(
         '--generator', type=str, required=True,
         help='path to generator model',
     )
@@ -74,9 +77,9 @@ def main():
     logger = Logger()
 
     if args.mode == 'up':
-        scaler = Upscaler(converter, logger)
+        scaler = Upscaler(converter, batch_size=args.batch_size, handler=logger)
     elif args.mode == 'down':
-        scaler = Downscaler(converter, logger)
+        scaler = Downscaler(converter, batch_size=args.batch_size, handler=logger)
     else:
         raise RuntimeError("unknown mode: {}".format(args.mode))
 
