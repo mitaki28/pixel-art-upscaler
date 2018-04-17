@@ -102,12 +102,12 @@ class Decoder(chainer.Chain):
     def __init__(self, out_ch, base_ch=64):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='up-nn', activation=F.relu, dropout=True)
-        layers['c1'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up-nn', activation=F.relu, dropout=True)
-        layers['c2'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up-nn', activation=F.relu, dropout=True)
-        layers['c3'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up-nn', activation=F.relu, dropout=False)
-        layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up-nn', activation=F.relu, dropout=False)
-        layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up-nn', activation=F.relu, dropout=False)
+        layers['c0'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c1'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c2'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c3'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up', activation=F.relu, dropout=False)
         layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none', activation=F.relu, dropout=False)
         layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 5, 1, 2, initialW=w)
         super().__init__(**layers)
