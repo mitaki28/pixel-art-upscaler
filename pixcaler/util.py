@@ -1,17 +1,10 @@
 import random
 import math
 import itertools
+from pathlib import Path
 
 import numpy as np
-
 from PIL import Image
-from pathlib import Path
-from chainercv.transforms import center_crop
-from chainercv.transforms import random_crop
-from chainercv.transforms import random_flip
-from chainercv.transforms import resize_contain
-from chainercv.transforms import resize
-from chainercv.utils import read_image
 
 def img_to_chw_array(img):
     return np.asarray(img.convert('RGBA')).astype("f").transpose((2, 0, 1)) / 127.5 - 1.0

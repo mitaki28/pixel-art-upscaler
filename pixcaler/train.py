@@ -15,8 +15,9 @@ from chainerui.extensions import CommandsExtension
 from pixcaler.net import Discriminator
 from pixcaler.net import Generator, Pix2Pix
 from pixcaler.updater import Pix2PixUpdater
-from pixcaler.dataset import PairDownscaleDataset, AutoUpscaleDataset, AutoUpscaleDatasetReverse
-from pixcaler.visualizer import out_image
+from pixcaler.dataset import AutoUpscaleDataset, CompositeAutoUpscaleDataset
+from pixcaler.visualizer import full_out_image, out_image
+from pixcaler.scaler import ChainerConverter, Upscaler
 
 def main():
     parser = argparse.ArgumentParser(
@@ -63,17 +64,17 @@ def main():
         help='Interval of previewing generated image',    
     )
     parser.add_argument(
-        '--mode', required=True, choices=('up', 'down'),
-        help='training mode',
-    )
-    parser.add_argument(
         '--use_random_nn_downscale', action='store_true', default=False,
         help='downscal by sampling 4-nearest pixel randomly',
     )
     parser.add_argument(
         '--flat_discriminator', action='store_true', default=False,
         help='(deprecated)',
-    )    
+    )
+    parser.add_argument(
+        '--composite', action='store_true', default=False,
+        help='composite',
+    )
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -99,35 +100,31 @@ def main():
     opt_gen = make_optimizer(gen)
     opt_dis = make_optimizer(dis)
 
-    if args.mode == 'up':
-        print('# upscale learning with automatically generated images')
+    print('# upscale learning with automatically generated images')
+    if args.composite:
+        train_d = CompositeAutoUpscaleDataset(
+            args.dataset,
+        )
+        test_d = CompositeAutoUpscaleDataset(
+            args.dataset,
+        )
+    else:
         train_d = AutoUpscaleDataset(
             "{}/main".format(args.dataset),
             random_nn=args.use_random_nn_downscale,
         )
         test_d = AutoUpscaleDataset(
-            "{}/test".format(args.dataset),        
+            "{}/main".format(args.dataset),
             random_nn=False,
         )
-    elif args.mode == 'down':
-        print('# downscale learning')
-        train_d = PairDownscaleDataset(
-            "{}/main/target".format(args.dataset),
-            "{}/main/source".format(args.dataset),            
-        )
-        test_d = AutoUpscaleDatasetReverse(
-            "{}/test".format(args.dataset),
-        )
-
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
-    test_iter = chainer.iterators.SerialIterator(test_d, 1)
- 
+    test_iter = chainer.iterators.SerialIterator(test_d, args.batchsize)
+
     # Set up a trainer
     updater = Pix2PixUpdater(
         model=model,
         iterator={
             'main': train_iter,
-            'test': test_iter,
         },
         optimizer={
             'gen': opt_gen,
@@ -153,16 +150,19 @@ def main():
         model.dis, 'dis_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
     )
-    trainer.extend(extensions.LogReport(trigger=preview_interval))
+    trainer.extend(extensions.LogReport(trigger=display_interval))
     trainer.extend(extensions.PlotReport(
         ['gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',],
-        trigger=preview_interval,
+        trigger=display_interval,
     ))
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
-    trainer.extend(out_image(gen, 8, args.out), trigger=preview_interval)
+
+    upscaler = Upscaler(ChainerConverter(gen, 64), batch_size=args.batchsize)
+    trainer.extend(out_image(test_iter, gen, 10, args.out), trigger=display_interval)    
+    trainer.extend(full_out_image(upscaler, "{}/test".format(args.dataset), args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 
     if args.resume:

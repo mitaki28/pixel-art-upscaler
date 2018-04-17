@@ -1,8 +1,10 @@
 import numpy as np
 from pathlib import Path
 import random
+import math
 
 from PIL import Image
+from PIL import ImageFont, ImageDraw
 
 from chainer.dataset import dataset_mixin
 from chainercv.transforms import center_crop
@@ -104,6 +106,74 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
                 ),
                 (self.fine_size, self.fine_size), Image.NEAREST,
             )
+        return source, target
+
+class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
+    def __init__(self, data_dir, fine_size=64):
+        import pixcaler.charset
+        self.data_dir = Path(data_dir)
+        self.chartips = list((self.data_dir/'chartip').glob("*.png"))
+        self.tiles = list((self.data_dir/'tile').glob("*.png"))
+        self.objs = list((self.data_dir/'obj').glob("*.png"))
+        self.fonts = list((self.data_dir/'font').glob("*.ttf"))
+        self.charset = pixcaler.charset.ALL
+
+        self.fine_size = fine_size
+        print("{} chartips loaded".format(len(self.chartips)))
+        print("{} tiles loaded".format(len(self.tiles)))
+        print("{} objs loaded".format(len(self.objs)))
+        print("{} fonts loaded".format(len(self.fonts)))
+    
+    def __len__(self):
+        return 10000
+
+    # return (source, target)
+    def get_example(self, i):
+        r = random.random()
+        if r < 0.5:
+            with Image.open(str(self.chartips[np.random.randint(len(self.chartips))])) as img:
+                front = img_to_chw_array(img)
+        elif r < 0.75:
+            with Image.open(str(self.objs[np.random.randint(len(self.objs))])) as img:
+                front = img_to_chw_array(img)
+        else:
+            S = 1
+            w, h = self.fine_size * 2 * S, self.fine_size * 2 * S
+            front = Image.new('RGBA', (w, h))
+            draw = ImageDraw.Draw(front)
+            fontsize = np.random.randint(32, 64) * S
+            font = ImageFont.truetype(str(self.fonts[np.random.randint(len(self.fonts))]), fontsize * 3 // 4)
+            txt = ''
+            for i in range(math.ceil(fontsize / h) * 4):
+                txt += ''.join(random.choices(self.charset, k=math.ceil(fontsize / w) * 4))
+                txt += '\n'
+            r, g, b = [np.random.randint(256) for i in range(3)]
+            draw.text((0, 0), txt, font=font, fill=(r, g, b, 255))
+            front = img_to_chw_array(front)
+        front = random_crop(front, (self.fine_size, self.fine_size))
+        front = random_flip(front, x_random=True)
+        
+        r = random.random()
+        if r < 0.9:
+            with Image.open(str(self.tiles[np.random.randint(len(self.tiles))])) as img:
+                back = img_to_chw_array(img)
+        else:
+            r, g, b = [np.random.randint(256) for i in range(3)]
+            back = Image.new('RGBA', (self.fine_size, self.fine_size), (r, g, b))
+            back = img_to_chw_array(back)
+        back = random_crop(back, (self.fine_size, self.fine_size))
+        back = random_flip(back, x_random=True)
+        m = np.tile((front[3,:,:] == 1).reshape((1, self.fine_size, self.fine_size)), (4, 1, 1)).reshape(4 * self.fine_size ** 2)
+        back = back.reshape(4 * self.fine_size ** 2)
+        back[m] = front.reshape(4 * self.fine_size ** 2)[m]
+        target = back.reshape((4, self.fine_size, self.fine_size))
+        source = resize(
+            resize(
+                target,
+                (self.fine_size // 2, self.fine_size // 2), Image.NEAREST,
+            ),
+            (self.fine_size, self.fine_size), Image.NEAREST,
+        )
         return source, target
 
 class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
