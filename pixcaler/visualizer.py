@@ -110,7 +110,7 @@ def out_image_cycle(gen_up, gen_down, n, dst):
         x = np.asarray(ret).reshape((rows, cols, C, H, W)).transpose((2, 0, 3, 1, 4)).reshape((C, rows*H, cols*W))
         
         preview_dir = '{}/preview'.format(dst)
-        preview_path = preview_dir + '/image_{:0>8}.png'.format(trainer.updater.iteration)
+        #preview_path = preview_dir + '/image_{:0>8}.png'.format(trainer.updater.iteration)
         current_path = preview_dir + '/image_current.png'
         if not os.path.exists(preview_dir):
             os.makedirs(preview_dir)

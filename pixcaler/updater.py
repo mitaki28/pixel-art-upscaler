@@ -42,7 +42,7 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
     def loss_func_rec_gen(self, x_in, x_out):
         return F.mean_absolute_error(x_out, x_in)
 
-    def loss_gen(self, enc, x_out, x_in, y_fake, lam1=10, lam2=1/32):
+    def loss_gen(self, enc, x_out, x_in, y_fake, lam1=10, lam2=1/16):
         loss_rec = lam1*self.loss_func_rec_gen(x_in, x_out)
         loss_adv = lam2*self.loss_func_adv_gen_ls(y_fake)
         loss = loss_rec + loss_adv

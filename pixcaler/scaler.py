@@ -26,6 +26,7 @@ class ChainerConverter(Converter):
 
     def __call__(self, imgs):
         xp = self.gen.xp
+        self.gen.fix_broken_batchnorm()
         
         x = xp.asarray([img_to_chw_array(img) for img in imgs])
         x_in = chainer.Variable(x)

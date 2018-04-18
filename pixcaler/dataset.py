@@ -116,7 +116,7 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         self.tiles = list((self.data_dir/'tile').glob("*.png"))
         self.objs = list((self.data_dir/'obj').glob("*.png"))
         self.fonts = list((self.data_dir/'font').glob("*.ttf"))
-        self.charset = pixcaler.charset.ALL
+        self.charset = list(pixcaler.charset.ALL)
 
         self.fine_size = fine_size
         print("{} chartips loaded".format(len(self.chartips)))
@@ -145,7 +145,7 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
             font = ImageFont.truetype(str(self.fonts[np.random.randint(len(self.fonts))]), fontsize * 3 // 4)
             txt = ''
             for i in range(math.ceil(fontsize / h) * 4):
-                txt += ''.join(random.choices(self.charset, k=math.ceil(fontsize / w) * 4))
+                txt += ''.join(np.random.choice(self.charset, math.ceil(fontsize / w) * 4))
                 txt += '\n'
             r, g, b = [np.random.randint(256) for i in range(3)]
             draw.text((0, 0), txt, font=font, fill=(r, g, b, 255))
