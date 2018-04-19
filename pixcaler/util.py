@@ -20,6 +20,25 @@ def chw_array_to_img(x):
         np.asarray(np.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
     )
 
+def downsample_nearest_neighbor(img, r):
+    c, h, w = img.shape
+    return (
+        img
+            .reshape((c, h // r, r, w // r, r))
+            .transpose((2, 4, 0, 1, 3))
+            .reshape((r * r, c, h // r, w // r))[0]
+    )
+
+def upsample_nearest_neighbor(img, r):
+    c, h, w = img.shape
+    return (
+        np.tile(img.reshape((c, h, w, 1)), r * r)
+            .reshape((c, h, w, r, r))
+            .transpose((0, 1, 3, 2, 4))
+            .reshape(c, h * r, w * r)
+    )
+
+
 def downscale_random_nearest_neighbor(img):
     c, h, w = img.shape
     img = img.reshape((c, h // 2, 2, w // 2, 2)).transpose((1, 3, 2, 4, 0)).reshape((h // 2, w // 2, 4, c))
@@ -58,3 +77,19 @@ def chunks(iterable, size):
     iterator = iter(iterable)
     for first in iterator:
         yield itertools.chain([first], itertools.islice(iterator, size - 1))
+
+if __name__ == '__main__':
+    r = 2
+    h, w, c = 8, 16, 4
+    x = np.random.randint(0, 256, size=(c, h, w), dtype=np.uint8)
+    y = upsample_nearest_neighbor(x, r)
+    assert y.shape == (c, h * r, w *r)
+    for (i, j, k) in np.ndindex(y.shape):
+        s = y[i, j, k]
+        t = x[i, j // r, k // r]
+        assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)
+    z = downsample_nearest_neighbor(x, r)
+    for (i, j, k) in np.ndindex(z.shape):
+        s = z[i, j, k]
+        t = x[i, j * r, k * r]
+        assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)
