@@ -123,11 +123,12 @@ class Pix2Pix(object):
         epochs=200,
         batch_size=4,
         preview_iteration_interval=100,
-        snapshot_epoch_interval=1,
+        snapshot_epoch_interval=10,
         initial_epoch=0,
         out_dir='result/',
         generator=None,
         discriminator=None,
+        composite=False,
     ):
         if generator is not None:
             self.pix2pix.get_layer('Generator').load_weights(generator)
@@ -138,13 +139,19 @@ class Pix2Pix(object):
         with (out_dir/'args').open('w') as f:
             f.write(json.dumps(sys.argv, sort_keys=True, indent=4))
         dataset_dir = Path(dataset_dir)
-        train_dataset = pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'main'))
+        if composite:
+            train_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
+            test_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
+        else:
+            train_dataset = pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'main'))    
+            test_dataset = pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'test'))
+        
         train_iterator = chainer.iterators.SerialIterator(
             train_dataset,
             batch_size=batch_size,
         )
         test_iterator = chainer.iterators.SerialIterator(
-            pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'test')),
+            test_dataset,
             batch_size=1,
         )
 
