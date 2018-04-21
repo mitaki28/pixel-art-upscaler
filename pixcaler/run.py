@@ -4,7 +4,7 @@ from pathlib import Path
 
 import chainer
 from pixcaler.net import Generator
-from pixcaler.scaler import Upscaler, Downscaler, ChainerConverter
+from pixcaler.scaler import Upscaler, Downscaler, ChainerConverter, Refiner
 
 
 def main():
@@ -40,7 +40,7 @@ def main():
         help='path to generator model',
     )
     parser.add_argument(
-        '--mode', type=str, choices=('up', 'down'), default='up',
+        '--mode', type=str, choices=('up', 'down', 'refine'), default='up',
         help='scaling mode',
     )
     
@@ -80,6 +80,8 @@ def main():
         scaler = Upscaler(converter, batch_size=args.batch_size, handler=logger)
     elif args.mode == 'down':
         scaler = Downscaler(converter, batch_size=args.batch_size, handler=logger)
+    elif args.mode == 'refine':
+        scaler = Refiner(converter, batch_size=args.batch_size, handler=logger)    
     else:
         raise RuntimeError("unknown mode: {}".format(args.mode))
 

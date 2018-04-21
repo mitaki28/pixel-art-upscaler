@@ -119,3 +119,18 @@ class Downscaler:
     def __call__(self, img):
         img = self.executor(img)
         return img.resize((img.size[0] // 2, img.size[1] // 2), Image.NEAREST)
+
+class Refiner:
+    def __init__(self, converter, batch_size=1, handler=None):
+        self.executor = PatchedExecuter(
+            converter,
+            is_alignment_required=True,
+            batch_size=batch_size,
+            handler=handler,
+        )
+
+    def generate_comparable_image(img):
+        return img
+
+    def __call__(self, img):
+        return self.executor(img)
