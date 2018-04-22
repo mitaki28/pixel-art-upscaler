@@ -64,8 +64,18 @@ export class AppContainer extends React.Component<{ store: App }> {
                         </NavItem>
                     </Nav>
                 </Navbar>
-                <Jumbotron style={{ textAlign: "center" }}>
-                    <div>
+                <Alert bsStyle="info">
+                    <p>
+                        以下の条件を満たすドット絵が前提です
+                    <ul>
+                            <li>1ドット1px</li>
+                            <li>jpeg 圧縮などでノイズがかかっていない</li>
+                            <li>png 形式</li>
+                        </ul>
+                    </p>
+                </Alert>
+                <Jumbotron>
+                    <div style={{ textAlign: "center" }}>
                         <label>
                             <span className={"btn btn-primary" + (this.props.store.canStartUpscale ? "" : " disabled")}>
                                 変換するファイルを選択
