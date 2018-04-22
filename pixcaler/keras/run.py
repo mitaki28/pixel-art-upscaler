@@ -67,8 +67,8 @@ class GeneratorVisualizer(keras.callbacks.Callback):
         preview_dir = self.out_dir/'preview'
         preview_path = preview_dir/'image_{:0>8}_{:0>8}.png'.format(self.epoch, step)
         current_path = preview_dir/'image_cureent.png'
-        if not os.path.exists(preview_dir):
-            os.makedirs(preview_dir)
+        if not preview_dir.exists():
+            preview_dir.mkdir(exist_ok=True, parents=True)
         img = Image.fromarray(x).convert('RGBA')
         img.save(preview_path)
         img.save(current_path)

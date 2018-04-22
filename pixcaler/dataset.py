@@ -157,10 +157,14 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         if r < 0.9:
             with Image.open(str(self.tiles[np.random.randint(len(self.tiles))])) as img:
                 back = img_to_chw_array(img)
-        else:
+        elif r < 0.95:
             r, g, b = [np.random.randint(256) for i in range(3)]
             back = Image.new('RGBA', (self.fine_size, self.fine_size), (r, g, b))
             back = img_to_chw_array(back)
+        else:
+            back = Image.new('RGBA', (self.fine_size, self.fine_size), (0, 0, 0, 0))
+            back = img_to_chw_array(back)
+
         back = random_crop(back, (self.fine_size, self.fine_size))
         back = random_flip(back, x_random=True)
         m = np.tile((front[3,:,:] == 1).reshape((1, self.fine_size, self.fine_size)), (4, 1, 1)).reshape(4 * self.fine_size ** 2)
