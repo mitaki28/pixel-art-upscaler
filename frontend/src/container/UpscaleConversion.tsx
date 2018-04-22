@@ -11,11 +11,23 @@ export const RunningUpscaleTaskPreview = observer(({ task }: { task: UpscaleTask
         return null;
     }
     return (
-        <div>
-            <div style={{height: 0, overflow: "visible", position: "relative"}}>
-                <img style={{ opacity: 0.5, zIndex: 1}} src={task.preprocessedImagePreview.dataUrl} />
-            </div>
-            <table style={{ position: "relative", top: 0, margin: 0, padding: 0, zIndex: 100 }}>
+        <div style={{
+            backgroundImage: `url(${task.preprocessedImagePreview.dataUrl})`,
+            overflow: "hidden",
+            width: `${task.preprocessedImagePreview.width}px`,
+            height: `${task.preprocessedImagePreview.height}px`,
+            position: "relative",
+        }}>
+            <table style={{
+                backgroundColor: "rgba(255, 255, 255, 0.5)",
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                opacity: 1,
+                WebkitTransfrom: "translate(-50%, -50%)",
+                MsTransfrom: "translate(-50%, -50%)",
+                transform: "translate(-50%, -50%)"
+            }}>
                 {task.patchUpscaleTasks.map((row, i) =>
                     <tr key={i}>
                         {row.map((col, j) => (
@@ -31,7 +43,7 @@ export const RunningUpscaleTaskPreview = observer(({ task }: { task: UpscaleTask
                     </tr>
                 )}
             </table>
-        </div>
+        </div >
     );
 });
 
@@ -162,15 +174,15 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
                     >
                         <div>
                             {!this.props.store.allFinished
-                            ? (
-                                <UpscaleConversionFlowProgressContainer store={this.props.store} />
-                            ) : (
-                                <Nav bsStyle="pills" style={{display: "flex", justifyContent: "center", alignItems: "center"}}>
-                                    <NavItem eventKey="load">元画像</NavItem>
-                                    <NavItem eventKey="scale2x">元画像(2x)</NavItem>
-                                    <NavItem eventKey="upscale">変換結果</NavItem>
-                                </Nav>
-                            )}
+                                ? (
+                                    <UpscaleConversionFlowProgressContainer store={this.props.store} />
+                                ) : (
+                                    <Nav bsStyle="pills" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                                        <NavItem eventKey="load">元画像</NavItem>
+                                        <NavItem eventKey="scale2x">元画像(2x)</NavItem>
+                                        <NavItem eventKey="upscale">変換結果</NavItem>
+                                    </Nav>
+                                )}
                             <Tab.Content animation={false} style={{
                                 marginTop: "20px",
                                 display: "flex", justifyContent: "center", alignItems: "center",

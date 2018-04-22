@@ -1,17 +1,10 @@
 import random
 import math
 import itertools
+from pathlib import Path
 
 import numpy as np
-
 from PIL import Image
-from pathlib import Path
-from chainercv.transforms import center_crop
-from chainercv.transforms import random_crop
-from chainercv.transforms import random_flip
-from chainercv.transforms import resize_contain
-from chainercv.transforms import resize
-from chainercv.utils import read_image
 
 def img_to_chw_array(img):
     return np.asarray(img.convert('RGBA')).astype("f").transpose((2, 0, 1)) / 127.5 - 1.0
@@ -26,6 +19,25 @@ def chw_array_to_img(x):
     return Image.fromarray(
         np.asarray(np.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
     )
+
+def downsample_nearest_neighbor(img, r):
+    c, h, w = img.shape
+    return (
+        img
+            .reshape((c, h // r, r, w // r, r))
+            .transpose((2, 4, 0, 1, 3))
+            .reshape((r * r, c, h // r, w // r))[0]
+    )
+
+def upsample_nearest_neighbor(img, r):
+    c, h, w = img.shape
+    return (
+        np.tile(img.reshape((c, h, w, 1)), r * r)
+            .reshape((c, h, w, r, r))
+            .transpose((0, 1, 3, 2, 4))
+            .reshape(c, h * r, w * r)
+    )
+
 
 def downscale_random_nearest_neighbor(img):
     c, h, w = img.shape
@@ -65,3 +77,19 @@ def chunks(iterable, size):
     iterator = iter(iterable)
     for first in iterator:
         yield itertools.chain([first], itertools.islice(iterator, size - 1))
+
+if __name__ == '__main__':
+    r = 2
+    h, w, c = 8, 16, 4
+    x = np.random.randint(0, 256, size=(c, h, w), dtype=np.uint8)
+    y = upsample_nearest_neighbor(x, r)
+    assert y.shape == (c, h * r, w *r)
+    for (i, j, k) in np.ndindex(y.shape):
+        s = y[i, j, k]
+        t = x[i, j // r, k // r]
+        assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)
+    z = downsample_nearest_neighbor(x, r)
+    for (i, j, k) in np.ndindex(z.shape):
+        s = z[i, j, k]
+        t = x[i, j * r, k * r]
+        assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)

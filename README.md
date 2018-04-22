@@ -1,8 +1,6 @@
-## Pixel-Art Upscaler(仮)
+## Pixcaler(Pixel-art scaler)
 
-* Demo： http://mitaki28.info/pixel-art-upscaler/
-
-このコードは[chaienr-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)をベースにして作成されています。
+* Demo： http://mitaki28.info/pixcaler/
 
 <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/example.gif?raw=true">
 
@@ -10,11 +8,14 @@
 
 ドット絵に特化した拡大ツールです。
 
-[既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms)よりもリアルな拡大が可能ですが、画像が歪んだり不自然な拡大がされることも結構あり、まだ実験段階です。
+[既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms)よりもシャープなエッジが特徴です。
 
 いわゆるディープラーニングと呼ばれる技術を用いて実装されており、[pix2pix](https://arxiv.org/abs/1611.07004) というネットワーク構造をベースにしています。実装は[chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)を改造して制作しました。
 
-[カミソリエッジ](https://razor-edge.work/material/fsmchcv/)様が配布されている First Seed Material 素材（高解像度版）のカラーバリエーション約7000枚を用いて学習しています。</p>
+* 以下の素材を機械的に重ね合わせて合成したデータを用いて学習しています
+    * [カミソリエッジ](https://razor-edge.work/material/fsmchcv/)様が配布されている First Seed Material 素材（高解像度版）のカラーバリエーション約7000枚
+    * [M+フォント](https://mplus-fonts.osdn.jp/)全種から、light, thin を除いたもの
+    * [コミュ将](https://comshou.wixsite.com/com-sho/about)様の配布されている[タイルセット（RTP不使用版）](https://comshou.wixsite.com/com-sho/single-post/2017/04/19/RTP%E4%B8%8D%E4%BD%BF%E7%94%A8%E7%B4%A0%E6%9D%90%E3%81%BE%E3%81%A8%E3%82%81)
 
 ### 環境構築
 * Python 3.5 が必要です
@@ -31,41 +32,39 @@ pip install cupy
 ```
 
 ### データセット
-1. [カミソリエッジ](https://razor-edge.work/material/fsmchcv/)様のサイトからデータをダウンロードします
-1. ダウンロードして画像を展開したディレクトリに対して、以下のコマンドを実行すると `image/fsm/main` に学習用のデータが生成されます
-```
-python pixcaler.tool.trim-chartip extract-fsm /path/to/material/dir/**/*.png
-```
-1. `image/fsm/test` については、main からコピー,移動するなり、別の素材を用意するなりして、同様の形式(80x80; RGBA; PNG)の素材を適当に入れてください。
+* データセットを用意するディレクトリを `image/dataset` とします。
+    * `image/dataset/chartip` に学習に使いたいキャラチップ素材を **背景を透過して** png 形式で保存します
+        * 背景を透過するためのユーティリティを用意しています。
+            ```
+            python -m pixcaler.tool.transparent-chartip image/dataset/chartip /path/to/chartip1.png /path/to/chatip2.png
+            ```
+    * `image/dataset/tile` に学習に使いたいマップチップ素材のうちタイル用の素材を png 形式で保存します
+    * `image/dataset/obj` に学習に使いたいマップチップ素材のうち前景に配置するオブジェクト素材を png 形式で保存します
+    * `image/dataset/font` に学習に使いたいフォント素材を ttf 形式で保存します
+    * `image/dataset/test` に学習結果のプレビュー用に拡大する画像を png 形式で保存します
+        
 
 ### 学習
 1. 以下のコマンドを実行します
 ```
-python -m pixcaler.train -e 400 --mode=up
+python -m pixcaler.train --composite -i (データセットのディレクトリ) -b 4
 ```
-
-※以下は現時点で一番性能の良いモデルを生成したときの手順です。（実際には500000〜1000000イテレーションで切り替えても大丈夫そうな感じはします）
-
-1. 1900000 イテレーション回した後、手動で updater.py の lam1 の値を160に変更した上で、さらに以下のコマンドを実行します
-```
-python -m pixcaler.train -e 400 --mode=up -r result/snapshot_iter_1900000.npz
-```
-1. 2000000 イテレーションで停止します
 
 
 ### 学習したモデルを使った画像変換
-1. `model/enc_iter_{iteration}.npz`, `model/dec_iter_{iteration}.npz` のように、同じディレクトリの中に学習済みのモデル一式が置かれていることが前提です。iteration には学習のイテレーション回数（数値列）が入ります
-1. モデルが置かれているディレクトリを `/path/to/model`,  イテレーション回数を 1000000 として、以下のコマンドを実行します
+1. 上記の手順に従った場合、通常、 `result/gen_iter_{iteration}.npz` に世代ごとのモデルが出力されます。iteration には学習のイテレーション回数（数値列）が入ります。
+1. 以下のコマンドを実行します。
 ```
-python -m pixcaler.run --generator=/path/to/generator.npz --mode up /path/to/image1.png /path/to/image2.png
+python -m pixcaler.run --generator=result/gen_iter_{iteration}.npz --mode up /path/to/image1.png /path/to/image2.png
 ```
 
 
 ### 既存の実装からの変更点
 #### 学習データ
 * もとの画像を以下の手順で処理して学習しています
-    * 点(0, 0) の色を透明色とみなし、該当する色を(0, 0, 0, 0)に変更します
-    * 80x80 になるように均等に padding を入れます
+    * キャラチップに関しては点(0, 0) の色を透明色とみなし、該当する色を(0, 0, 0, 0)に変更します
+    * キャラチップから64x64の範囲をランダムに切り取ります
+    * キャラチップ、フォントを背景のタイルセットからランダムにまたは固定色1色の背景と合成します
     * 画像を平行移動（64x64のcrop）と鏡像反転して、データを水増しします
         * 平行移動はおそらく重要です
             * nearest neighbor 縮小は性質上、1枚の画像に対して、4種類の結果が存在します（縮小時に4x4格子のどの点を取るかの自由度があるため）
@@ -74,33 +73,16 @@ python -m pixcaler.run --generator=/path/to/generator.npz --mode up /path/to/ima
             * さらに、目などの細かいピクセルの模様も nearest neighbor 縮小のいずれかのパターンではきれいに残っていること多いので、学習を繰り返すことで、適切な復元方法にたどり着ける可能性が上がります
     * nearest neighbor 法(PIL.Image.NEAREST_NEIGHBOR によるリサイズ)で縮小し、再度64x64に nearest_neighbor 法で拡大したものを変換元、もとの画像を変換先として学習します
 
-#### l1-loss の倍率について
-* l1-loss の倍率（lam1）は、少なくとも10倍では小さすぎるようです。現状、1900000イテレーション回した後、lam1=160として100000イテレーション追加で学習することにより、l1-lossと生成画像の安定性が向上しました。
-    * 1400000 イテレーション
-        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art-1400000.png?raw=true">
-    * 1900000 イテレーション + lam1=160 で 100000 イテレーション
-        * <img src="https://github.com/mitaki28/pixel-art-upscaler/blob/master/image/high-resolution-pixel-art-1900000_lam1-160-100000.png?raw=true">
-
-* その後、320まで倍率を上げて追加で600000イテレーションほど回しました。l1-loss は lam1=100 相当で2.0程度まで減りましたが、エッジが不自然に太くなったりしていたので、単純に l1-loss の小ささだけで良さが決まるわけでもなさそうです。
-
 #### その他
-
-いろいろ変えてみましたが、実際のところ、 [chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix) の実装そのままで、128x128 にアップスケールして学習しても大きく結果は変わってなさそうです。（思考錯誤したのをそのまま上げてしまったので、再度調査中）
-
-* 最近、良いと言われている手法をいくつか取り入れています
-    * Deconvolution2D を [Nearest-Neighbor ResizeConvolution](https://distill.pub/2016/deconv-checkerboard/) に換装(効果があるかは微妙)
-    * Generater/Discriminater の loss 関数を [LSGAN](https://arxiv.org/abs/1611.04076) に変更(効果があるかは微妙)
-        * 同時に lam1 倍率を100→10に変更してます（経験上、lsgan に換装すると loss は10分の1ぐらいにスケールされる）
-        * [CycleGAN](https://github.com/junyanz/CycleGAN) でも採用されているより安定性の高い loss 関数
+* Generater/Discriminater の loss 関数を [LSGAN](https://arxiv.org/abs/1611.04076) に変更(効果があるかは微妙)
+    * 同時に lam1 倍率を100→10に変更してます（経験上、lsgan に換装すると loss は10分の1ぐらいにスケールされる）
+    * [CycleGAN](https://github.com/junyanz/CycleGAN) でも採用されているより安定性の高い loss 関数
+* adversarial loss 倍率を1/16に変更
+    * ドット絵の場合、l1-lossが通常の写真などよりもより小さい値に収束するため、adversarial loss をかなり小さく取らないと学習が不安定になります
+    * なお、この倍率だと、loss の値上は、adversarial loss がほとんど無視されているような挙動になりますが、完全に adversarial loss をなくしてしまうと、出力にノイズが乗るようになり、学習結果が不安定になります
 * pix2pix ネットワークの encoder, decoder の最上段を kernel size 5x5, stride 1, padding 2 の Convolution2D に換装（効果あるのか微妙）
     * もとのネットワークでは画像サイズが128x128以上ないと、画像幅が足りずエラーになります
     * そこで、最上段を5x5のConvolution2D(縮小なし)に換装しました
     * 3x3 ではなく5x5 なのは [既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms) が5x5のconvolutionをベースとしていたことや、より広い範囲を見たほうが、そのドットのコンテキストを推論しやすいだろうという予想のもとです
 
-
-### 備考
-* batchsize はマシンスペックに余裕があっても敢えて1にすべきです(効果あり; batchsize=4のときと比較して l1-loss の収束に0.5(lam1=100 のとき)程度の差がありました)
-    * ただし、現状、 chainer のバグ？で、 batchsize=1 のとき、一部の BatchNormalization の重みが nan になってしまい、 test モードでの計算ができなくなるようです
-    * batchsize=1 のときの BatchNormalization は InstanceNormalization と等価になり、性質が変わるとのことです
-        * https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/issues/27
 

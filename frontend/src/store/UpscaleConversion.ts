@@ -47,14 +47,7 @@ export class UpscaleTask extends Task<DataUrlImage> {
             const preprocessedImage = await this.scale2x(src)
                 .then(this.padding)
                 .then(this.align);
-            this._preprocessedImagePreview = await preprocessedImage.withJimp((img) => {
-                img.crop(
-                    this.patchSize / 2,
-                    this.patchSize / 2,
-                    img.bitmap.width - this.patchSize / 2,
-                    img.bitmap.height - this.patchSize / 2,
-                );
-            });
+            this._preprocessedImagePreview = await this.scale2x(src);
             const img = await preprocessedImage.toJimp();
             const [w, h] = [img.bitmap.width, img.bitmap.height];
             const [dstWidth, dstHeight] = [w - this.patchSize, h - this.patchSize];
@@ -112,18 +105,40 @@ export class UpscaleTask extends Task<DataUrlImage> {
 
     @action.bound
     private async padding(src: DataUrlImage): Promise<DataUrlImage> {
-        const t = await src.toTf();
-        const [h, w, c] = t.shape;
+        const t = await src.toJimp();
+        const {height: h, width: w} = t.bitmap;
+        const channel = 4;
         const [nh, nw] = [h, w].map((x) => SIZE_FACTOR * Math.ceil(x / SIZE_FACTOR) + this.patchSize);
         const [ph, pw] = [
             Math.floor((nh - h) / 2),
             Math.floor((nw - w) / 2),
         ];
-        return await DataUrlImage.fromTf(t.pad([
-            [ph, nh - h - ph],
-            [pw, nw - w - pw],
-            [0, 0],
-        ]));
+        const ret: Jimp.Jimp = new (Jimp.default as any)(nw, nh);
+        ret.filterType(Jimp.PNG_FILTER_NONE);
+        ret.deflateLevel(0);
+        ret.scan(0, 0, ret.bitmap.width, ret.bitmap.height, (x, y, idx) => {
+            let ox: number;
+            if (x < pw) {
+                ox = (pw - x);
+            } else if (x >= pw + w) {
+                ox = ((w - 1) - (x - (pw + w)));
+            } else {
+                ox = (x - pw);
+            }
+            let oy: number;
+            if (y < ph) {
+                oy = (ph - y);
+            } else if (y >= ph + h) {
+                oy = ((h - 1) - (y - (ph + h)));
+            } else {
+                oy = (y - ph);
+            }
+            const oidx = t.getPixelIndex(ox, oy);
+            for (let c = 0; c < channel; c++) {
+                ret.bitmap.data[idx + c] = t.bitmap.data[oidx + c];
+            }
+        });
+        return await DataUrlImage.fromJimp(ret);
     }
 
     @action.bound

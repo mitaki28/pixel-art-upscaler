@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 from PIL import Image
+from pathlib import Path
 
 import chainer
 import chainer.cuda
@@ -9,7 +10,7 @@ from chainer import Variable
 from chainercv.transforms import resize, resize_contain
 from pixcaler.util import chw_array_to_img
 
-def out_image(gen, n, dst):
+def out_image(test_iter, gen, n, dst):
     @chainer.training.make_extension()
     def make_image(trainer):
         xp = gen.xp
@@ -22,7 +23,7 @@ def out_image(gen, n, dst):
         ret = []
         
         for it in range(n):
-            batch = trainer.updater.get_iterator('test').next()
+            batch = test_iter.next()
 
             x_in = Variable(xp.asarray([b[0] for b in batch]).astype('f'))
             t_out = Variable(xp.asarray([b[1] for b in batch]).astype('f'))
@@ -48,6 +49,23 @@ def out_image(gen, n, dst):
         img.save(current_path)
     return make_image
 
+def full_out_image(scaler, src_dir, dst_dir):
+    src_dir = Path(src_dir)
+    dst_dir = Path(dst_dir)/'preview'
+    latest_dir = dst_dir/'latest'
+    @chainer.training.make_extension()
+    def make_image(trainer):
+        out_dir = dst_dir/'{:0>8}'.format(trainer.updater.iteration)
+        out_dir.mkdir(exist_ok=True, parents=True)
+        for path in sorted(src_dir.glob("*.png"), key=lambda p: p.name):
+            with Image.open(str(path)) as img:
+                scaler(img.convert('RGBA')).save(out_dir/path.name)
+        try:
+            latest_dir.unlink()
+        except FileNotFoundError:
+            pass
+        latest_dir.symlink_to(out_dir, target_is_directory=True)
+    return make_image
 
 
 def out_image_cycle(gen_up, gen_down, n, dst):
@@ -92,7 +110,7 @@ def out_image_cycle(gen_up, gen_down, n, dst):
         x = np.asarray(ret).reshape((rows, cols, C, H, W)).transpose((2, 0, 3, 1, 4)).reshape((C, rows*H, cols*W))
         
         preview_dir = '{}/preview'.format(dst)
-        preview_path = preview_dir + '/image_{:0>8}.png'.format(trainer.updater.iteration)
+        #preview_path = preview_dir + '/image_{:0>8}.png'.format(trainer.updater.iteration)
         current_path = preview_dir + '/image_current.png'
         if not os.path.exists(preview_dir):
             os.makedirs(preview_dir)
