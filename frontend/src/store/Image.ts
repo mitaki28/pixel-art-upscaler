@@ -15,7 +15,6 @@ export class DataUrlImage {
         return tf.tensor(imageToHwcFloat32Array(img, 4), [img.bitmap.height, img.bitmap.width, 4], "float32");
     }
     static async fromTf(tensor: tf.Tensor) {
-        console.log(tensor);
         return await this.fromJimp(hwcFloat32ArrayToImage(
             await tensor.flatten().data() as Float32Array,
             tensor.shape[2],
