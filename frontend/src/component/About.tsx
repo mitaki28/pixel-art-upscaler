@@ -10,7 +10,7 @@ export const About = (props: {}) => (
         </ul>        
         <h2>このアプリケーションについて</h2>
         <p>ドット絵に特化した拡大ツールです。</p>
-        <p><a href="https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms" target="_blank">既存の手法</a>よりもシャープなエッジが特徴です。</p>
+        <p><a href="https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms" target="_blank">既存の手法</a>と比較してより自然な拡大が可能です。</p>
         <p>いわゆるディープラーニングと呼ばれる技術を用いて実装されており、<a href="https://arxiv.org/abs/1611.07004" target="_blank">pix2pix</a> というネットワーク構造をベースにしています。実装は<a href="https://github.com/pfnet-research/chainer-pix2pix" target="_blank">chainer-pix2pix</a>を改造して制作しました。</p>
         <p>
             以下の素材を用いて学習しています。

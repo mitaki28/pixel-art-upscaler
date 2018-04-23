@@ -59,7 +59,7 @@ export class AppContainer extends React.Component<{ store: App }> {
                         <NavItem onClick={this.props.store.showAbout}>
                             About
                         </NavItem>
-                        <NavItem href="https://github.com/mitaki28/pixel-art-upscaler">
+                        <NavItem href="https://github.com/mitaki28/pixel-art-upscaler" target="_blank">
                             GitHub
                         </NavItem>
                     </Nav>

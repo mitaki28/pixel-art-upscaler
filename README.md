@@ -8,7 +8,7 @@
 
 ドット絵に特化した拡大ツールです。
 
-[既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms)よりもシャープなエッジが特徴です。
+[既存の手法](https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms)と比較してより自然な拡大が可能です。
 
 いわゆるディープラーニングと呼ばれる技術を用いて実装されており、[pix2pix](https://arxiv.org/abs/1611.07004) というネットワーク構造をベースにしています。実装は[chainer-pix2pix](https://github.com/pfnet-research/chainer-pix2pix)を改造して制作しました。
 
