@@ -65,6 +65,7 @@ export class AppContainer extends React.Component<{ store: App }> {
                     </Nav>
                 </Navbar>
                 <Alert bsStyle="info">
+                    <p><Button bsStyle="link" onClick={this.props.store.showAbout}>利用規約はこちら</Button></p>
                     <p>
                         以下の条件を満たすドット絵が前提です
                     <ul>
@@ -72,6 +73,13 @@ export class AppContainer extends React.Component<{ store: App }> {
                             <li>jpeg 圧縮などでノイズがかかっていない</li>
                             <li>png 形式</li>
                         </ul>
+                    </p>
+                    <p>
+                        画像変換処理はブラウザ上で実行されるため以下の点にご注意ください
+                        <ul>
+                            <li>あまり解像度の高い画像を入力するとPC・ブラウザが重くなったりクラッシュする可能性があります（600x600px程度に抑えること推奨）</li>
+                            <li>ブラウザのタブを切り替えたりブラウザを非表示にしている間は一時的に変換処理が止まります</li>
+                        </ul>                        
                     </p>
                 </Alert>
                 <Jumbotron>
