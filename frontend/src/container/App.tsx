@@ -52,20 +52,20 @@ export class AppContainer extends React.Component<{ store: App }> {
                 <Navbar>
                     <Navbar.Header>
                         <Navbar.Brand>
-                            <a href="#">Pixcaler</a>
+                            <a href="#">Pixcaler(β)</a>
                         </Navbar.Brand>
                     </Navbar.Header>
                     <Nav>
                         <NavItem onClick={this.props.store.showAbout}>
                             About
                         </NavItem>
-                        <NavItem href="https://github.com/mitaki28/pixel-art-upscaler" target="_blank">
+                        <NavItem href="https://github.com/mitaki28/pixcaler" target="_blank">
                             GitHub
                         </NavItem>
                     </Nav>
                 </Navbar>
                 <Alert bsStyle="info">
-                    <p><Button bsStyle="link" onClick={this.props.store.showAbout}>利用規約はこちら</Button></p>
+                    <p><Button bsStyle="primary" onClick={this.props.store.showAbout}>利用規約</Button></p>
                     <p>
                         以下の条件を満たすドット絵が前提です
                     <ul>
