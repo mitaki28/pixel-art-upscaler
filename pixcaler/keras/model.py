@@ -175,7 +175,6 @@ def pix2pix(w, in_ch, out_ch, base_ch, use_resize_conv=False):
     gen_in, gen_out = generator(w, in_ch, out_ch, base_ch, use_resize_conv)
     dis_in_0, dis_in_1, dis_out = discriminator(w, in_ch, out_ch, base_ch)
 
-    # この書き方だと、逆伝搬が止まらないので、loss 関数が壊れているが、学習できてしまったので一旦このままで
     gen = keras.models.Model(gen_in, gen_out, 'Generator')
     gen_frozen = keras.models.Model(gen_in, gen_out, 'Generator-Frozen')
     gen_frozen.trainable = False
@@ -194,10 +193,10 @@ def pix2pix(w, in_ch, out_ch, base_ch, use_resize_conv=False):
     y_real_dis = dis([x_in, x_real])
     y_fake_dis = dis([x_in, x_fake])
 
-    return keras.models.Model(
-        [x_in, x_real],
-        [x_fake_gen, y_fake_gen, y_real_dis, y_fake_dis],
-    )
+    gen_trainer = keras.models.Model([x_in, x_real], [x_fake_gen, y_fake_gen])
+    dis_trainer = keras.models.Model([x_in, x_real], [y_real_dis, y_fake_dis])
+
+    return gen, dis, gen_trainer, dis_trainer
 
 lam1 = 100
 lam2 = 1

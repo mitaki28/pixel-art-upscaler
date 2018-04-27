@@ -20,6 +20,19 @@ def chw_array_to_img(x):
         np.asarray(np.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
     )
 
+def img_to_hwc_array(img):
+    return np.asarray(img.convert('RGBA')).astype("f") / 127.5 - 1.0
+
+def hwc_array_to_img(x):
+    H, W, C = x.shape
+    if C==1:
+        x = x.reshape((H, W))
+    else:
+        x = x.reshape((H, W, C))
+    return Image.fromarray(
+        np.asarray(np.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
+    )
+
 def downsample_nearest_neighbor(img, r):
     c, h, w = img.shape
     return (

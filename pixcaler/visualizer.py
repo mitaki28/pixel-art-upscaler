@@ -49,22 +49,24 @@ def out_image(test_iter, gen, n, dst):
         img.save(current_path)
     return make_image
 
+class ScalerVisualizer:
+    def __init__(self, scaler, src_dir, dst_dir):
+        self.scaler = scaler
+        self.src_dir = Path(src_dir)
+        self.dst_dir = Path(dst_dir)/'preview'
+
+    def __call__(self, iteration):
+        out_dir = self.dst_dir/'{:0>8}'.format(iteration)
+        out_dir.mkdir(exist_ok=True, parents=True)
+        for path in sorted(self.src_dir.glob("*.png"), key=lambda p: p.name):
+            with Image.open(str(path)) as img:
+                self.scaler(img.convert('RGBA')).save(out_dir/path.name)
+
 def full_out_image(scaler, src_dir, dst_dir):
-    src_dir = Path(src_dir)
-    dst_dir = Path(dst_dir)/'preview'
-    latest_dir = dst_dir/'latest'
+    vis = ScalerVisualizer(scaler, src_dir, dst_dir)
     @chainer.training.make_extension()
     def make_image(trainer):
-        out_dir = dst_dir/'{:0>8}'.format(trainer.updater.iteration)
-        out_dir.mkdir(exist_ok=True, parents=True)
-        for path in sorted(src_dir.glob("*.png"), key=lambda p: p.name):
-            with Image.open(str(path)) as img:
-                scaler(img.convert('RGBA')).save(out_dir/path.name)
-        try:
-            latest_dir.unlink()
-        except FileNotFoundError:
-            pass
-        latest_dir.symlink_to(out_dir, target_is_directory=True)
+        vis(trainer.updater.iteration)
     return make_image
 
 

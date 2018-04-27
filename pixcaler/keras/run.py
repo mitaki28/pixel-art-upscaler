@@ -14,27 +14,31 @@ import chainer
 
 import pixcaler.keras.model
 import pixcaler.dataset
+import pixcaler.scaler
+import pixcaler.util
+import pixcaler.visualizer
 
-class GeneratorVisualizer(keras.callbacks.Callback):
-    def __init__(self, preview_iteration_interval, test_iterator, n, out_dir):
+class KerasConverter(pixcaler.scaler.Converter):
+    def __init__(self, gen, input_size):
+        self.gen = gen
+        self.input_size = input_size
+
+    def get_input_size(self):
+        return self.input_size
+
+    def __call__(self, imgs):
+        x_in = np.asarray([pixcaler.util.img_to_hwc_array(img) for img in imgs])
+        x_out = self.gen.predict(x_in)
+        return [pixcaler.util.hwc_array_to_img(x) for x in x_out]
+
+class GeneratorVisualizer:
+    def __init__(self, gen, test_iterator, n, out_dir):
+        self.gen = gen
         self.test_iterator = test_iterator
         self.n = n
-        self.iteration = 0
         self.out_dir = Path(out_dir)
-        self.epoch = 0
-        self.preview_iteration_interval = preview_iteration_interval
 
-    def on_epoch_begin(self, epoch, logs={}):
-        self.epoch = epoch
-
-    def on_batch_begin(self, batch, logs={}):
-        self.iteration += 1
-
-    def on_batch_end(self, step, logs={}):
-        if self.iteration % self.preview_iteration_interval != 0:
-            return
-        step += 1
-
+    def __call__(self, iteration):
         n_pattern = 3
         n_images = self.n * n_pattern
 
@@ -50,7 +54,7 @@ class GeneratorVisualizer(keras.callbacks.Callback):
 
             x_in = x_in.transpose((0, 2, 3, 1))
             x_real = x_real.transpose((0, 2, 3, 1))
-            x_out = self.model.get_layer('Generator').predict(x_in)
+            x_out = self.gen.predict(x_in)
     
             ret.append(x_in[0])
             ret.append(x_real[0])
@@ -65,7 +69,7 @@ class GeneratorVisualizer(keras.callbacks.Callback):
         else:
             x = x.reshape((rows*H, cols*W, C))
         preview_dir = self.out_dir/'preview'
-        preview_path = preview_dir/'image_{:0>8}_{:0>8}.png'.format(self.epoch, step)
+        preview_path = preview_dir/'image_{:0>8}.png'.format(iteration)
         current_path = preview_dir/'image_cureent.png'
         if not preview_dir.exists():
             preview_dir.mkdir(exist_ok=True, parents=True)
@@ -74,20 +78,51 @@ class GeneratorVisualizer(keras.callbacks.Callback):
         img.save(current_path)
 
 
-class Pix2PixCheckpoint(keras.callbacks.Callback):
-    def __init__(self, out_dir, period=1):
+class Pix2PixCheckpoint:
+    def __init__(self, gen, dis, out_dir):
+        self.gen = gen
+        self.dis = dis
         self.out_dir = Path(out_dir)
-        self.period = period
 
-    def on_epoch_end(self, epoch, logs=None):
-        epoch += 1
-        if epoch % self.period == 0:
-            self.model.get_layer('Generator').save_weights(
-                str(self.out_dir/'gen_{epoch:05d}.h5'.format(epoch=epoch)),
-            )
-            self.model.get_layer('Discriminator').save_weights(
-                str(self.out_dir/'dis_{epoch:05d}.h5'.format(epoch=epoch)),
-            )
+    def __call__(self, iteration):
+        self.gen.save_weights(
+            str(self.out_dir/'gen_{:0>8}.h5'.format(iteration)),
+        )
+        self.dis.save_weights(
+            str(self.out_dir/'dis_{:0>8}.h5'.format(iteration)),
+        )
+
+class Pix2PixLogger:
+    def __init__(self, out_path):
+        self.out_path = Path(out_path)
+        self.count = 0
+        self.loss = {}
+
+    def _clear_accumulation(self):
+        self.count = 0
+        self.loss = {}
+
+    def accumulate(self, loss):
+        self.count += 1
+        for k in loss:                
+            self.loss[k] = self.loss.get(k, 0) + loss[k]
+
+    def get_current(self, iteration=None):
+        loss = {}
+        if iteration is not None:
+            loss['iteration'] = iteration
+        for k in self.loss:
+            loss[k] = self.loss[k] / self.count
+        return loss
+
+    def flush(self, iteration):
+        loss = self.get_current(iteration)
+        print(loss)
+
+        with self.out_path.open(mode='a') as f:
+            f.write(json.dumps(loss, sort_keys=True))
+            f.write('\n')
+        self._clear_accumulation()
 
 class Pix2Pix(object):
     def __init__(self,
@@ -99,10 +134,15 @@ class Pix2Pix(object):
         self.size = 64
         self.in_ch = in_ch
         self.out_ch = out_ch
-        self.pix2pix = pixcaler.keras.model.pix2pix(size, in_ch, out_ch, base_ch)
+        self.gen, self.dis, self.gen_trainer, self.dis_trainer = pixcaler.keras.model.pix2pix(
+            size,
+            in_ch,
+            out_ch,
+            base_ch,
+        )
 
     def _load_generator(self, generator):
-        gen = self.pix2pix.get_layer('Generator')
+        gen = self.gen
         gen.load_weights(generator)
         return gen
 
@@ -122,29 +162,26 @@ class Pix2Pix(object):
         dataset_dir,
         epochs=200,
         batch_size=4,
-        preview_iteration_interval=100,
-        snapshot_epoch_interval=10,
+        log_interval=100,
+        preview_interval=1000,
+        full_preview_interval=10000,
+        snapshot_interval=10000,
         initial_epoch=0,
         out_dir='result/',
         generator=None,
         discriminator=None,
-        composite=False,
     ):
         if generator is not None:
-            self.pix2pix.get_layer('Generator').load_weights(generator)
+            self.gen.load_weights(generator)
         if discriminator is not None:
-            self.pix2pix.get_layer('Discriminator').load_weights(discriminator)
+            self.dis.load_weights(discriminator)
         out_dir = Path(out_dir)
         out_dir.mkdir(exist_ok=True, parents=True)
         with (out_dir/'args').open('w') as f:
             f.write(json.dumps(sys.argv, sort_keys=True, indent=4))
         dataset_dir = Path(dataset_dir)
-        if composite:
-            train_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
-            test_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
-        else:
-            train_dataset = pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'main'))    
-            test_dataset = pixcaler.dataset.AutoUpscaleDataset(str(dataset_dir/'test'))
+        train_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
+        test_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
         
         train_iterator = chainer.iterators.SerialIterator(
             train_dataset,
@@ -169,11 +206,18 @@ class Pix2Pix(object):
                     [
                         x_real,
                         np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
-                        np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
-                        np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
                     ],
+                ], [
+                    [
+                        x_in,
+                        x_real,
+                    ],
+                    [
+                        np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
+                        np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
+                    ],                    
                 ]
-        self.pix2pix.compile(
+        self.gen_trainer.compile(
             keras.optimizers.Adam(
                 lr=0.0002,
                 beta_1=0.5,
@@ -185,49 +229,64 @@ class Pix2Pix(object):
             [
                 pixcaler.keras.model.gen_loss_l1,
                 pixcaler.keras.model.gen_loss_adv,
+            ],
+        )
+        self.dis_trainer.compile(
+            keras.optimizers.Adam(
+                lr=0.0002,
+                beta_1=0.5,
+                beta_2=0.999,
+                epsilon=1e-8,
+                decay=0.0,
+                amsgrad=False,
+            ),
+            [
                 pixcaler.keras.model.dis_loss_real,
                 pixcaler.keras.model.dis_loss_fake,        
             ],
         )
-        self.pix2pix.fit_generator(
-            _dataset(),
-            math.ceil(len(train_dataset) / batch_size),
-            epochs=epochs,
-            initial_epoch=initial_epoch,
-            verbose=1,
-            callbacks=[
-                Pix2PixCheckpoint(
-                    out_dir,
-                    snapshot_epoch_interval,
-                ),
-                # keras.callbacks.ModelCheckpoint(
-                #     str(out_dir/'model_{epoch:02d}.hdf5'),
-                #     monitor='val_loss',
-                #     verbose=0,
-                #     save_best_only=False,
-                #     save_weights_only=True,
-                #     mode='auto',
-                #     period=1,
-                # ),
-                keras.callbacks.TensorBoard(
-                    log_dir=str(out_dir/'logs'),
-                    histogram_freq=0,
-                    batch_size=None,
-                    write_graph=True,
-                    write_grads=False,
-                    write_images=False,
-                    embeddings_freq=0,
-                    embeddings_layer_names=None,
-                    embeddings_metadata=None,
-                ),
-                GeneratorVisualizer(
-                    preview_iteration_interval=preview_iteration_interval,
-                    test_iterator=test_iterator,
-                    n=10,
-                    out_dir=out_dir,
-                )
-            ]
+
+        checkpoint = Pix2PixCheckpoint(
+            self.gen,
+            self.dis,
+            out_dir,
         )
+        visualizer = GeneratorVisualizer(
+            gen=self.gen,
+            test_iterator=test_iterator,
+            n=10,
+            out_dir=out_dir,
+        )
+        logger = Pix2PixLogger(out_dir/'logs')
+        converter = KerasConverter(self.gen, self.size)
+        scaler = pixcaler.scaler.Upscaler(
+            converter,
+            batch_size,
+        )
+        full_visualizer = pixcaler.visualizer.ScalerVisualizer(
+            scaler,
+            dataset_dir/'test',
+            out_dir,
+        )
+        i = 0
+        for i, ((gen_x, gen_y), (dis_x, dis_y)) in enumerate(_dataset(), 1):
+            _, loss_gen_rec, loss_gen_adv = self.gen_trainer.train_on_batch(gen_x, gen_y)
+            _, loss_dis_real, loss_dis_fake = self.dis_trainer.train_on_batch(dis_x, dis_y)
+            logger.accumulate({
+                'gen/rec': loss_gen_rec,
+                'gen/adv': loss_gen_adv,
+                'dis/real': loss_dis_real,
+                'dis/fake': loss_dis_fake,
+            })
+            print(logger.get_current(i), end='\r')
+            if i % log_interval == 0:
+                logger.flush(i)
+            if i % preview_interval == 0:
+                visualizer(i)
+            if i % full_preview_interval == 0:
+                full_visualizer(i)
+            if i % snapshot_interval == 0:
+                checkpoint(i)
 
 if __name__ == '__main__':
     fire.Fire(Pix2Pix)
