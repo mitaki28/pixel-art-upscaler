@@ -199,7 +199,7 @@ def pix2pix(w, in_ch, out_ch, base_ch, use_resize_conv=False):
     return gen, dis, gen_trainer, dis_trainer
 
 lam1 = 100
-lam2 = 1
+lam2 = 1/8
 
 def gen_loss_l1(y_true, y_pred):
     return lam1 * keras.losses.mean_absolute_error(y_true, y_pred)

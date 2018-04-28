@@ -166,7 +166,7 @@ class Pix2Pix(object):
         preview_interval=1000,
         full_preview_interval=10000,
         snapshot_interval=10000,
-        initial_epoch=0,
+        initial_iteration=0,
         out_dir='result/',
         generator=None,
         discriminator=None,
@@ -269,7 +269,7 @@ class Pix2Pix(object):
             out_dir,
         )
         i = 0
-        for i, ((gen_x, gen_y), (dis_x, dis_y)) in enumerate(_dataset(), 1):
+        for i, ((gen_x, gen_y), (dis_x, dis_y)) in enumerate(_dataset(), initial_iteration + 1):
             _, loss_gen_rec, loss_gen_adv = self.gen_trainer.train_on_batch(gen_x, gen_y)
             _, loss_dis_real, loss_dis_fake = self.dis_trainer.train_on_batch(dis_x, dis_y)
             logger.accumulate({
