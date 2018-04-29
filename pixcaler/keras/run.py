@@ -150,6 +150,7 @@ class Pix2Pix(object):
         out_path = Path(out_path)
         if out_path.exists():
             raise RuntimeError('{} is already exists'.format(out_path))
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         gen = self._load_generator(generator)
         gen.save(str(out_path))
         if tfjs:
@@ -268,7 +269,6 @@ class Pix2Pix(object):
             dataset_dir/'test',
             out_dir,
         )
-        i = 0
         for i, ((gen_x, gen_y), (dis_x, dis_y)) in enumerate(_dataset(), initial_iteration + 1):
             _, loss_gen_rec, loss_gen_adv = self.gen_trainer.train_on_batch(gen_x, gen_y)
             _, loss_dis_real, loss_dis_fake = self.dis_trainer.train_on_batch(dis_x, dis_y)
