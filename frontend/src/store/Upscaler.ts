@@ -115,8 +115,10 @@ export abstract class UpscalerLoader {
 
     @observable private _state: UpscalerLoadingState;
     private _upscaler: null | Promise<Upscaler>;
+    private _path: string;
 
-    constructor() {
+    constructor(path: string) {
+        this._path = path;
         this._upscaler = null;
         this._state = {
             status: UpscalerLoadingState.PENDING,
@@ -133,7 +135,7 @@ export abstract class UpscalerLoader {
         this._state = {
             status: UpscalerLoadingState.LOADING,
         };
-        return this.load().then((upscaler) => {
+        return this.load(this._path).then((upscaler) => {
             this.finishLoading(upscaler);
             return upscaler;
         }).catch((e: any) => {
@@ -142,7 +144,7 @@ export abstract class UpscalerLoader {
         });
     }
 
-    protected abstract load(): Promise<Upscaler>;
+    protected abstract load(path: string): Promise<Upscaler>;
 
     @action.bound
     private finishLoading(value: Upscaler) {
@@ -173,8 +175,8 @@ export abstract class UpscalerLoader {
 
 export class WebDNNUpscalerLoader extends UpscalerLoader {
     @action.bound
-    protected load(): Promise<Upscaler> {
-        return WebDNN.load("./model/webdnn").then((runner) => {
+    protected load(path: string): Promise<Upscaler> {
+        return WebDNN.load(path).then((runner) => {
             return new WebDNNUpscaler(runner);
         })
     }
@@ -182,9 +184,9 @@ export class WebDNNUpscalerLoader extends UpscalerLoader {
 
 export class KerasUpscalerLoader extends UpscalerLoader {
     @action.bound
-    protected load(): Promise<Upscaler> {
+    protected load(path: string): Promise<Upscaler> {
         const model = new KerasJS.Model({
-            filepath: './model/keras/model.bin',
+            filepath: path,
             gpu: true,
         });
         return model.ready().then(() => {
@@ -195,8 +197,8 @@ export class KerasUpscalerLoader extends UpscalerLoader {
 
 export class TfjsUpscalerLoader extends UpscalerLoader {
     @action.bound
-    protected load(): Promise<Upscaler> {
-        return tf.loadModel('./model/tfjs/model.json').then((model) => {
+    protected load(path: string): Promise<Upscaler> {
+        return tf.loadModel(path).then((model) => {
             return new TfjsUpscaler(model);
         });
     }
