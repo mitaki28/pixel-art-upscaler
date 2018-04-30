@@ -215,7 +215,7 @@ class BceGanLoss:
     def dis_fake(self, _, y_pred):
         return K.mean(K.softplus(-y_pred), axis=-1)
 
-class LSGanLoss:
+class LsGanLoss:
     def __init__(self, lam1=10, lam2=1/4):
         self.lam1 = lam1
         self.lam2 = lam2
@@ -224,11 +224,11 @@ class LSGanLoss:
         return self.lam1 * keras.losses.mean_absolute_error(y_true, y_pred)
 
     def gen_adv(self, _, y_pred):
-        return self.lam2 * K.mean((y_pred - 1.0) ** 2, axis=-1)
+        return self.lam2 * 0.5 * K.mean((y_pred - 1.0) ** 2, axis=-1)
 
     def dis_real(self, _, y_pred):
-        return K.mean((y_pred - 1.0) ** 2, axis=-1)
+        return 0.5 * K.mean((y_pred - 1.0) ** 2, axis=-1)
 
     def dis_fake(self, _, y_pred):
-        return K.mean(y_pred ** 2, axis=-1)
+        return 0.5 * K.mean(y_pred ** 2, axis=-1)
 
