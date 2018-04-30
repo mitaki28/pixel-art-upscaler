@@ -171,6 +171,9 @@ class Pix2Pix(object):
         out_dir='result/',
         generator=None,
         discriminator=None,
+        use_lsgan=False,
+        lam1=100,
+        lam2=1/16,
     ):
         if generator is not None:
             self.gen.load_weights(generator)
@@ -218,6 +221,14 @@ class Pix2Pix(object):
                         np.zeros((batch_size, self.size // 8, self.size // 8, 1)),
                     ],                    
                 ]
+
+        if use_lsgan:
+            print('use LSGan with lam1 = {}, lam2 = {}'.format(lam1, lam2))
+            loss_fn = pixcaler.keras.model.LsGanLoss(lam1, lam2)
+        else:
+            print('use BCEGan with lam1 = {}, lam2 = {}'.format(lam1, lam2))
+            loss_fn = pixcaler.keras.model.BceGanLoss(lam1, lam2)
+        
         self.gen_trainer.compile(
             keras.optimizers.Adam(
                 lr=0.0002,
@@ -228,8 +239,8 @@ class Pix2Pix(object):
                 amsgrad=False,
             ),
             [
-                pixcaler.keras.model.gen_loss_l1,
-                pixcaler.keras.model.gen_loss_adv,
+                loss_fn.gen_rec,
+                loss_fn.gen_adv,
             ],
         )
         self.dis_trainer.compile(
@@ -242,8 +253,8 @@ class Pix2Pix(object):
                 amsgrad=False,
             ),
             [
-                pixcaler.keras.model.dis_loss_real,
-                pixcaler.keras.model.dis_loss_fake,        
+                loss_fn.dis_real,
+                loss_fn.dis_fake,  
             ],
         )
 

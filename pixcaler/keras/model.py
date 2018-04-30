@@ -198,18 +198,37 @@ def pix2pix(w, in_ch, out_ch, base_ch, use_resize_conv=False):
 
     return gen, dis, gen_trainer, dis_trainer
 
-lam1 = 100
-lam2 = 1/8
+class BceGanLoss:
+    def __init__(self, lam1=100, lam2=1/16):
+        self.lam1 = lam1
+        self.lam2 = lam2
 
-def gen_loss_l1(y_true, y_pred):
-    return lam1 * keras.losses.mean_absolute_error(y_true, y_pred)
+    def gen_rec(self, y_true, y_pred):
+        return self.lam1 * keras.losses.mean_absolute_error(y_true, y_pred)
 
-def gen_loss_adv(_, y_pred):
-    return lam2 * K.mean(K.softplus(y_pred), axis=-1)
+    def gen_adv(self, _, y_pred):
+        return self.lam2 * K.mean(K.softplus(y_pred), axis=-1)
 
-def dis_loss_real(_, y_pred):
-    return K.mean(K.softplus(y_pred), axis=-1)
+    def dis_real(self, _, y_pred):
+        return K.mean(K.softplus(y_pred), axis=-1)
 
-def dis_loss_fake(_, y_pred):
-    return K.mean(K.softplus(-y_pred), axis=-1)
+    def dis_fake(self, _, y_pred):
+        return K.mean(K.softplus(-y_pred), axis=-1)
+
+class LSGanLoss:
+    def __init__(self, lam1=10, lam2=1/4):
+        self.lam1 = lam1
+        self.lam2 = lam2
+
+    def gen_rec(self, y_true, y_pred):
+        return self.lam1 * keras.losses.mean_absolute_error(y_true, y_pred)
+
+    def gen_adv(self, _, y_pred):
+        return self.lam2 * K.mean((y_pred - 1.0) ** 2, axis=-1)
+
+    def dis_real(self, _, y_pred):
+        return K.mean((y_pred - 1.0) ** 2, axis=-1)
+
+    def dis_fake(self, _, y_pred):
+        return K.mean(y_pred ** 2, axis=-1)
 
