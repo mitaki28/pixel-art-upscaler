@@ -68,10 +68,6 @@ def main():
         help='downscal by sampling 4-nearest pixel randomly',
     )
     parser.add_argument(
-        '--flat_discriminator', action='store_true', default=False,
-        help='(deprecated)',
-    )
-    parser.add_argument(
         '--composite', action='store_true', default=False,
         help='composite',
     )
@@ -87,7 +83,7 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    model = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, flat=args.flat_discriminator)
+    model = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, factor=args.factor)
     gen = model.gen
     dis = model.dis
     
@@ -125,7 +121,7 @@ def main():
                 random_nn=False,
             )
         elif args.factor == 3:
-            input_size = 64 * 3
+            input_size = 96
             train_d = AutoUpscaleDataset(
                 "{}/main".format(args.dataset),
                 random_nn=args.use_random_nn_downscale,
@@ -161,10 +157,6 @@ def main():
     display_interval = (args.display_interval, 'iteration')
     preview_interval = (args.preview_interval, 'iteration')
     
-    trainer.extend(extensions.snapshot(
-        filename='snapshot_iter_{.updater.iteration}.npz'),
-        trigger=snapshot_interval,
-    )
     trainer.extend(extensions.snapshot_object(
         model.gen, 'gen_iter_{.updater.iteration}.npz'),
         trigger=snapshot_interval,
@@ -175,16 +167,16 @@ def main():
     )
     trainer.extend(extensions.LogReport(trigger=display_interval))
     trainer.extend(extensions.PlotReport(
-        ['gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',],
+        ['gen/loss_adv', 'gen/loss_rec', 'dis/loss_real', 'dis/loss_fake'],
         trigger=display_interval,
     ))
     trainer.extend(extensions.PrintReport([
-        'epoch', 'iteration', 'gen/loss_adv', 'gen/loss_rec', 'gen/loss', 'dis/loss',
+        'epoch', 'iteration', 'gen/loss_adv', 'gen/loss_rec', 'dis/loss_real', 'dis/loss_fake',
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     upscaler = Upscaler(ChainerConverter(gen, input_size), args.factor, batch_size=args.batchsize)
-    trainer.extend(out_image(test_iter, gen, 10, args.out), trigger=display_interval)    
+    trainer.extend(out_image(test_iter, gen, 1, args.out), trigger=display_interval)    
     trainer.extend(full_out_image(upscaler, "{}/test".format(args.dataset), args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 

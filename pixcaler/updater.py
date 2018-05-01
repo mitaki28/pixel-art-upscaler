@@ -48,14 +48,14 @@ class Pix2PixUpdater(chainer.training.StandardUpdater):
         loss = loss_rec + loss_adv
         chainer.report({'loss_rec': loss_rec}, enc)
         chainer.report({'loss_adv': loss_adv}, enc)
-        chainer.report({'loss': loss}, enc)
         return loss
 
     def loss_dis(self, dis, y_real, y_fake):
         L1 = self.loss_func_adv_dis_real_ls(y_real)
         L2 = self.loss_func_adv_dis_fake_ls(y_fake)
         loss = L1 + L2
-        chainer.report({'loss': loss}, dis)
+        chainer.report({'loss_real': L1}, dis)
+        chainer.report({'loss_fake': L2}, dis)
         return loss
 
     def update_core(self):        

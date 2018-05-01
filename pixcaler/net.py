@@ -54,19 +54,25 @@ class CBR(chainer.Chain):
         w = chainer.initializers.Normal(0.02)
         if sample=='down':
             layers['c'] = L.Convolution2D(ch0, ch1, 4, 2, 1, initialW=w)
+        elif sample=='down-3':
+            layers['c'] = L.Convolution2D(ch0, ch1, 5, 3, 1, initialW=w)
         elif sample=='up':
             layers['c'] = L.Deconvolution2D(ch0, ch1, 4, 2, 1, initialW=w)
+        elif sample=='up-3':
+            layers['c'] = L.Deconvolution2D(ch0, ch1, 5, 3, 1, initialW=w)
         elif sample=='up-nn':
             layers['c'] = NNConvolution2D(ch0, ch1, 2, 3, 1, 1, initialW=w)
         elif sample=='none':
             layers['c'] = L.Convolution2D(ch0, ch1, 3, 1, 1, initialW=w)
         elif sample=='none-5':
             layers['c'] = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
+        elif sample=='none-7':
+            layers['c'] = L.Convolution2D(ch0, ch1, 7, 1, 3, initialW=w)
         else:
             assert False, 'unknown sample {}'.format(sample)
         if bn:
             layers['batchnorm'] = L.BatchNormalization(ch1)
-        super(CBR, self).__init__(**layers)
+        super().__init__(**layers)
         
     def __call__(self, x):
         h = self.c(x)
@@ -79,12 +85,19 @@ class CBR(chainer.Chain):
         return h
 
 class Encoder(chainer.Chain):
-    def __init__(self, in_ch, base_ch=64):
+    def __init__(self, in_ch, base_ch=64, factor=2):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0'] = L.Convolution2D(in_ch, base_ch, 5, 1, 2, initialW=w)
-        layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
-        layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        if factor == 2:
+            layers['c0'] = L.Convolution2D(in_ch, base_ch, 5, 1, 2, initialW=w)
+            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
+            layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        elif factor == 3:
+            layers['c0'] = L.Convolution2D(in_ch, base_ch, 7, 1, 3, initialW=w)
+            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none-7', activation=F.leaky_relu, dropout=False)
+            layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
+        else:
+            assert False, "factor {} is not implemented".format(factor)
         layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c4'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c5'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
@@ -99,7 +112,7 @@ class Encoder(chainer.Chain):
         return hs
 
 class Decoder(chainer.Chain):
-    def __init__(self, out_ch, base_ch=64):
+    def __init__(self, out_ch, base_ch=64, factor=2):
         layers = {}
         w = chainer.initializers.Normal(0.02)
         layers['c0'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
@@ -107,26 +120,30 @@ class Decoder(chainer.Chain):
         layers['c2'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
         layers['c3'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=False)
         layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none', activation=F.relu, dropout=False)
-        layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 5, 1, 2, initialW=w)
+        if factor == 2:
+            layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up', activation=F.relu, dropout=False)
+            layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none', activation=F.relu, dropout=False)
+            layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 5, 1, 2, initialW=w)
+        elif factor == 3:
+            layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up-3', activation=F.relu, dropout=False)
+            layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none-7', activation=F.relu, dropout=False)
+            layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 7, 1, 3, initialW=w)
+        else:
+            assert False, 'factor {} is not implemented'.format(factor)
         super().__init__(**layers)
 
     def __call__(self, hs):
         h = self.c0(hs[-1])
         for i in range(1,8):
             h = F.concat([h, hs[-i-1]])
-            if i<7:
-                h = self['c%d'%i](h)
-            else:
-                h = self.c7(h)
+            h = self['c%d'%i](h)
         return h
 
 class Generator(chainer.Chain):
-    def __init__(self, in_ch, out_ch, base_ch=64):        
+    def __init__(self, in_ch, out_ch, base_ch=64, factor=2):        
         super().__init__(
-            enc=Encoder(in_ch, base_ch),
-            dec=Decoder(out_ch, base_ch),
+            enc=Encoder(in_ch, base_ch, factor),
+            dec=Decoder(out_ch, base_ch, factor),
         )
 
     def __call__(self, x_in):
@@ -147,13 +164,20 @@ class Generator(chainer.Chain):
                 cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)        
 
 class Discriminator(chainer.Chain):
-    def __init__(self, in_ch, out_ch, flat=True, base_ch=64):
+    def __init__(self, in_ch, out_ch, base_ch=64, factor=2):
         assert base_ch % 2 == 0
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample=('none-5' if flat else 'down'), activation=F.leaky_relu, dropout=False)
-        layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample=('none-5' if flat else 'down'), activation=F.leaky_relu, dropout=False)
-        layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        if factor == 2:
+            layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
+            layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
+            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        elif factor == 3:
+            layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample='none-7', activation=F.leaky_relu, dropout=False)
+            layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample='none-7', activation=F.leaky_relu, dropout=False)
+            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
+        else:
+            assert False, 'factor {} is not implemented'.format(factor)
         layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c4'] = L.Convolution2D(base_ch * 8, 1, 3, 1, 1, initialW=w)
@@ -168,8 +192,8 @@ class Discriminator(chainer.Chain):
         return h
 
 class Pix2Pix(chainer.Chain):
-    def __init__(self, in_ch, out_ch, flat=True, base_ch=64):
+    def __init__(self, in_ch, out_ch, base_ch=64, factor=2):
         super().__init__(
-            gen=Generator(in_ch, out_ch, base_ch=base_ch),
-            dis=Discriminator(in_ch, out_ch, base_ch=base_ch, flat=flat),
+            gen=Generator(in_ch, out_ch, base_ch=base_ch, factor=factor),
+            dis=Discriminator(in_ch, out_ch, base_ch=base_ch, factor=factor),
         )
