@@ -75,6 +75,10 @@ def main():
         '--composite', action='store_true', default=False,
         help='composite',
     )
+    parser.add_argument(
+        '--factor', type=int, default=2,
+        help='upscaling factor',
+    )
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -100,8 +104,9 @@ def main():
     opt_gen = make_optimizer(gen)
     opt_dis = make_optimizer(dis)
 
-    print('# upscale learning with automatically generated images')
     if args.composite:
+        assert args.factor == 2
+        input_size = 64
         train_d = CompositeAutoUpscaleDataset(
             args.dataset,
         )
@@ -109,14 +114,32 @@ def main():
             args.dataset,
         )
     else:
-        train_d = AutoUpscaleDataset(
-            "{}/main".format(args.dataset),
-            random_nn=args.use_random_nn_downscale,
-        )
-        test_d = AutoUpscaleDataset(
-            "{}/main".format(args.dataset),
-            random_nn=False,
-        )
+        if args.factor == 2:
+            input_size = 64
+            train_d = AutoUpscaleDataset(
+                "{}/main".format(args.dataset),
+                random_nn=args.use_random_nn_downscale,
+            )
+            test_d = AutoUpscaleDataset(
+                "{}/main".format(args.dataset),
+                random_nn=False,
+            )
+        elif args.factor == 3:
+            input_size = 64 * 3
+            train_d = AutoUpscaleDataset(
+                "{}/main".format(args.dataset),
+                random_nn=args.use_random_nn_downscale,
+                fine_size=input_size,
+                factor=3,
+            )
+            test_d = AutoUpscaleDataset(
+                "{}/main".format(args.dataset),
+                random_nn=False,
+                fine_size=input_size,
+                factor=3,
+            )            
+        else:
+            assert False, 'not implemented for factor {}'.format(factor)
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test_d, args.batchsize)
 
@@ -160,7 +183,7 @@ def main():
     ]), trigger=display_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
-    upscaler = Upscaler(ChainerConverter(gen, 64), batch_size=args.batchsize)
+    upscaler = Upscaler(ChainerConverter(gen, input_size), args.factor, batch_size=args.batchsize)
     trainer.extend(out_image(test_iter, gen, 10, args.out), trigger=display_interval)    
     trainer.extend(full_out_image(upscaler, "{}/test".format(args.dataset), args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())

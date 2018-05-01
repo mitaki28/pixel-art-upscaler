@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 
 import chainer
-from pixcaler.util import chw_array_to_img, img_to_chw_array, align_2x_nearest_neighbor_scaled_image, pad_by_multiply_of, chunks
+from pixcaler.util import chw_array_to_img, img_to_chw_array, align_nearest_neighbor_scaled_image, pad_by_multiply_of, chunks
 
 
 class NullConversionEventHandler:
@@ -36,19 +36,19 @@ class ChainerConverter(Converter):
         return [chw_array_to_img(x) for x in chainer.cuda.to_cpu(x_out.data)]
 
 class PatchedExecuter:
-    def __init__(self, converter, is_alignment_required, batch_size, handler=None):
+    def __init__(self, converter, alignment_factor, batch_size, handler=None):
         self.patch_size = converter.get_input_size() // 2
         self.batch_size = batch_size
         self.converter = converter
-        self.is_alignment_required = is_alignment_required
+        self.alignment_factor = alignment_factor
         self.handler = NullConversionEventHandler() if handler is None else handler
 
     def __call__(self, img):
         ps = self.patch_size
         w_org, h_org = img.size
         img = pad_by_multiply_of(img, ps, ps // 2)
-        if self.is_alignment_required:
-            img = align_2x_nearest_neighbor_scaled_image(img)
+        if self.alignment_factor > 1:
+            img = align_nearest_neighbor_scaled_image(img, self.alignment_factor)
         
         n_i = (img.size[0] - ps // 2 * 2) // ps
         n_j = (img.size[1] - ps // 2 * 2) // ps
@@ -90,42 +90,44 @@ class PatchedExecuter:
 
 
 class Upscaler:
-    def __init__(self, converter, batch_size=1, handler=None):
+    def __init__(self, converter, factor, batch_size=1, handler=None):
+        self.factor = factor
         self.executor = PatchedExecuter(
             converter,
-            is_alignment_required=True,
+            alignment_factor=factor,
             batch_size=batch_size,
             handler=handler,
         )
 
     def generate_comparable_image(img):
-        return img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)        
+        return img.resize((img.size[0] * self.factor, img.size[1] * self.factor), Image.NEAREST)        
 
     def __call__(self, img):
-        img = img.resize((img.size[0] * 2, img.size[1] * 2), Image.NEAREST)
+        img = img.resize((img.size[0] * self.factor, img.size[1] * self.factor), Image.NEAREST)
         return self.executor(img)
 
 class Downscaler:
-    def __init__(self, converter, batch_size=1, handler=None):
+    def __init__(self, converter, factor=2, batch_size=1, handler=None):
+        self.factor = factor
         self.executor = PatchedExecuter(
             converter,
-            is_alignment_required=False,
+            alignment_factor=1,
             batch_size=batch_size,
             handler=handler,
         )
 
     def generate_comparable_image(img):
-        return img.resize((img.size[0] // 2, img.size[1] // 2), Image.NEAREST)
+        return img.resize((img.size[0] // self.factor, img.size[1] // self.factor), Image.NEAREST)
 
     def __call__(self, img):
         img = self.executor(img)
-        return img.resize((img.size[0] // 2, img.size[1] // 2), Image.NEAREST)
+        return img.resize((img.size[0] // self.factor, img.size[1] // self.factor), Image.NEAREST)
 
 class Refiner:
     def __init__(self, converter, batch_size=1, handler=None):
         self.executor = PatchedExecuter(
             converter,
-            is_alignment_required=True,
+            alignment_factor=1,
             batch_size=batch_size,
             handler=handler,
         )

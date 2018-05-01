@@ -52,16 +52,16 @@ def upsample_nearest_neighbor(img, r):
     )
 
 
-def downscale_random_nearest_neighbor(img):
+def downscale_random_nearest_neighbor(img, r):
     c, h, w = img.shape
-    img = img.reshape((c, h // 2, 2, w // 2, 2)).transpose((1, 3, 2, 4, 0)).reshape((h // 2, w // 2, 4, c))
-    hw_idx = np.indices((h // 2, w // 2))
+    img = img.reshape((c, h // r, r, w // r, r)).transpose((1, 3, 2, 4, 0)).reshape((h // r, w // r, r * r, c))
+    hw_idx = np.indices((h // r, w // r))
     c_idx = np.random.randint(0, 4, img.shape[:2])
     return img[hw_idx[0], hw_idx[1], c_idx].transpose((2, 0, 1))
 
-def align_2x_nearest_neighbor_scaled_image(img):
+def align_nearest_neighbor_scaled_image(img, r):
     w, h = img.size
-    return img.resize((w // 2, h // 2), Image.NEAREST).resize((w, h), Image.NEAREST)
+    return img.resize((w // r, h // r), Image.NEAREST).resize((w, h), Image.NEAREST)
 
 def pad_by_multiply_of(img, factor=64, add=0):
     img = np.asarray(img)
