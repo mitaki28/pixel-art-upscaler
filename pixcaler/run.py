@@ -30,10 +30,10 @@ def main():
         help='output images for compare',
     )
     parser.add_argument(
-        '--patch_size', '-p', type=int, default=32,
+        '--patch_size', '-p', type=int,
     )
     parser.add_argument(
-        '--batch_size', '-b', type=int, default=4,
+        '--batch_size', '-b', type=int, default=1,
     )
     parser.add_argument(
         '--generator', type=str, required=True,
@@ -43,13 +43,16 @@ def main():
         '--mode', type=str, choices=('up', 'down', 'refine'), default='up',
         help='scaling mode',
     )
+    parser.add_argument(
+        '--factor', type=int, default=2,
+    )    
     
     args = parser.parse_args()
     gen_path = Path(args.generator)
     print('GPU: {}'.format(args.gpu))
     print('')
 
-    gen = Generator(in_ch=4, out_ch=4)
+    gen = Generator(in_ch=4, out_ch=4, factor=args.factor)
     
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
@@ -73,13 +76,16 @@ def main():
             self.context = context
         def on_patch(self, patch, idx, n):
             print("{}: {}/{}".format(self.context, idx + 1, n), end='\r')
-    converter = ChainerConverter(gen, input_size=args.patch_size * 2)
+    
+    patch_size = args.patch_size if args.patch_size is not None else 32 * args.factor
+
+    converter = ChainerConverter(gen, input_size=patch_size)
     logger = Logger()
 
     if args.mode == 'up':
-        scaler = Upscaler(converter, batch_size=args.batch_size, handler=logger)
+        scaler = Upscaler(converter, factor=args.factor, batch_size=args.batch_size, handler=logger)
     elif args.mode == 'down':
-        scaler = Downscaler(converter, batch_size=args.batch_size, handler=logger)
+        scaler = Downscaler(converter, factor=args.factor, batch_size=args.batch_size, handler=logger)
     elif args.mode == 'refine':
         scaler = Refiner(converter, batch_size=args.batch_size, handler=logger)    
     else:
