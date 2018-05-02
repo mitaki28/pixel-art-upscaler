@@ -134,7 +134,7 @@ def main():
             args.dataset,
         )
     else:
-        input_size = 32 * args.factor
+        input_size = int(32 * args.factor)
         train_d = AutoUpscaleDataset(
             "{}/main".format(args.dataset),
             random_nn=args.use_random_nn_downscale,

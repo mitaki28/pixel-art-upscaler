@@ -61,7 +61,7 @@ def downscale_random_nearest_neighbor(img, r):
 
 def align_nearest_neighbor_scaled_image(img, r):
     w, h = img.size
-    return img.resize((w // r, h // r), Image.NEAREST).resize((w, h), Image.NEAREST)
+    return img.resize((int(w // r), int(h // r)), Image.NEAREST).resize((w, h), Image.NEAREST)
 
 def pad_by_multiply_of(img, factor=64, add=0):
     img = np.asarray(img)

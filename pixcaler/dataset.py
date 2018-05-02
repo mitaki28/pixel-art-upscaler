@@ -44,7 +44,7 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
             source = resize(
                 resize(
                     target,
-                    (self.fine_size // self.factor, self.fine_size // self.factor), Image.NEAREST,
+                    (int(self.fine_size // self.factor), int(self.fine_size // self.factor)), Image.NEAREST,
                 ),
                 (self.fine_size, self.fine_size), Image.NEAREST,
             )

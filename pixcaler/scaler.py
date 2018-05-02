@@ -100,10 +100,10 @@ class Upscaler:
         )
 
     def generate_comparable_image(img):
-        return img.resize((img.size[0] * self.factor, img.size[1] * self.factor), Image.NEAREST)        
+        return img.resize((int(img.size[0] * self.factor), int(img.size[1] * self.factor)), Image.NEAREST)        
 
     def __call__(self, img):
-        img = img.resize((img.size[0] * self.factor, img.size[1] * self.factor), Image.NEAREST)
+        img = img.resize((int(img.size[0] * self.factor), int(img.size[1] * self.factor)), Image.NEAREST)
         return self.executor(img)
 
 class Downscaler:
@@ -117,11 +117,11 @@ class Downscaler:
         )
 
     def generate_comparable_image(img):
-        return img.resize((img.size[0] // self.factor, img.size[1] // self.factor), Image.NEAREST)
+        return img.resize((int(img.size[0] // self.factor), int(img.size[1] // self.factor)), Image.NEAREST)
 
     def __call__(self, img):
         img = self.executor(img)
-        return img.resize((img.size[0] // self.factor, img.size[1] // self.factor), Image.NEAREST)
+        return img.resize((int(img.size[0] // self.factor), int(img.size[1] // self.factor)), Image.NEAREST)
 
 class Refiner:
     def __init__(self, converter, batch_size=1, handler=None):
