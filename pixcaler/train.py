@@ -48,10 +48,6 @@ def main():
         help='Directory to output the result',
     )
     parser.add_argument(
-        '--resume', '-r', default='',
-        help='Resume the training from snapshot',
-    )
-    parser.add_argument(
         '--snapshot_interval', type=int, default=1000,
         help='Interval of snapshot',
     )
@@ -75,6 +71,16 @@ def main():
         '--factor', type=int, default=2,
         help='upscaling factor',
     )
+    parser.add_argument(
+        '--generator', type=str,
+        help='path to generator model',
+    )
+    parser.add_argument(
+        '--discriminator', type=str,
+        help='path to discriminator model',
+    )
+
+
     args = parser.parse_args()
     save_args(args, args.out)
 
@@ -86,7 +92,12 @@ def main():
     model = Pix2Pix(in_ch=4, out_ch=4, base_ch=args.base_ch, factor=args.factor)
     gen = model.gen
     dis = model.dis
-    
+
+    if args.generator is not None:
+        chainer.serializers.load_npz(args.generator, gen)
+    if args.discriminator is not None:
+        chainer.serializers.load_npz(args.discriminator, dis)
+ 
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         model.to_gpu()  # Copy the model to the GPU
@@ -179,10 +190,6 @@ def main():
     trainer.extend(out_image(test_iter, gen, 1, args.out), trigger=display_interval)    
     trainer.extend(full_out_image(upscaler, "{}/test".format(args.dataset), args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
-
-    if args.resume:
-        # Resume from a snapshot
-        chainer.serializers.load_npz(args.resume, trainer)
 
     # Run the training
     trainer.run()
