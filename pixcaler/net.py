@@ -88,17 +88,23 @@ class Encoder(chainer.Chain):
     def __init__(self, in_ch, base_ch=64, factor=2):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        if factor == 2:
+        if factor == 1.5:
+            layers['c0'] = L.Convolution2D(in_ch, base_ch, 5, 1, 2, initialW=w)
+            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
+            layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
+            layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
+        elif factor == 2:
             layers['c0'] = L.Convolution2D(in_ch, base_ch, 5, 1, 2, initialW=w)
             layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
             layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+            layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)            
         elif factor == 3:
             layers['c0'] = L.Convolution2D(in_ch, base_ch, 7, 1, 3, initialW=w)
             layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none-7', activation=F.leaky_relu, dropout=False)
             layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
+            layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         else:
             assert False, "factor {} is not implemented".format(factor)
-        layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c4'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c5'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         layers['c6'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
@@ -119,12 +125,18 @@ class Decoder(chainer.Chain):
         layers['c1'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
         layers['c2'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
         layers['c3'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=False)
-        layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up', activation=F.relu, dropout=False)
-        if factor == 2:
+        if factor == 1.5:
+            layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up-3', activation=F.relu, dropout=False)
+            layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='none', activation=F.relu, dropout=False)
+            layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none', activation=F.relu, dropout=False)
+            layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 5, 1, 2, initialW=w)
+        elif factor == 2:
+            layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up', activation=F.relu, dropout=False)
             layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up', activation=F.relu, dropout=False)
             layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none', activation=F.relu, dropout=False)
             layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 5, 1, 2, initialW=w)
         elif factor == 3:
+            layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up', activation=F.relu, dropout=False)
             layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up-3', activation=F.relu, dropout=False)
             layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none-7', activation=F.relu, dropout=False)
             layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 7, 1, 3, initialW=w)
@@ -168,7 +180,11 @@ class Discriminator(chainer.Chain):
         assert base_ch % 2 == 0
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        if factor == 2:
+        if factor == 1.5:
+            layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
+            layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
+            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down', activation=F.leaky_relu, dropout=False)            
+        elif factor == 2:
             layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
             layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
             layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down', activation=F.leaky_relu, dropout=False)

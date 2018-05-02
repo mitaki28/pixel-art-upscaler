@@ -44,6 +44,10 @@ def main():
         help='Directory of image files.',
     )
     parser.add_argument(
+        '--test_dataset',
+        help='Directory of image files.',
+    )
+    parser.add_argument(
         '--out', '-o', default='result',
         help='Directory to output the result',
     )
@@ -68,7 +72,7 @@ def main():
         help='composite',
     )
     parser.add_argument(
-        '--factor', type=int, default=2,
+        '--factor', type=float, default=2,
         help='upscaling factor',
     )
     parser.add_argument(
@@ -130,32 +134,19 @@ def main():
             args.dataset,
         )
     else:
-        if args.factor == 2:
-            input_size = 64
-            train_d = AutoUpscaleDataset(
-                "{}/main".format(args.dataset),
-                random_nn=args.use_random_nn_downscale,
-            )
-            test_d = AutoUpscaleDataset(
-                "{}/main".format(args.dataset),
-                random_nn=False,
-            )
-        elif args.factor == 3:
-            input_size = 96
-            train_d = AutoUpscaleDataset(
-                "{}/main".format(args.dataset),
-                random_nn=args.use_random_nn_downscale,
-                fine_size=input_size,
-                factor=3,
-            )
-            test_d = AutoUpscaleDataset(
-                "{}/main".format(args.dataset),
-                random_nn=False,
-                fine_size=input_size,
-                factor=3,
-            )            
-        else:
-            assert False, 'not implemented for factor {}'.format(factor)
+        input_size = 32 * args.factor
+        train_d = AutoUpscaleDataset(
+            "{}/main".format(args.dataset),
+            random_nn=args.use_random_nn_downscale,
+            fine_size=input_size,
+            factor=args.factor,
+        )
+        test_d = AutoUpscaleDataset(
+            "{}/main".format(args.dataset),
+            random_nn=False,
+            fine_size=input_size,
+            factor=args.factor,
+        )
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test_d, args.batchsize)
 
@@ -206,8 +197,12 @@ def main():
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     upscaler = Upscaler(ChainerConverter(gen, input_size), args.factor, batch_size=args.batchsize)
-    trainer.extend(out_image(test_iter, gen, 4, args.out), trigger=display_interval)    
-    trainer.extend(full_out_image(upscaler, "{}/test".format(args.dataset), args.out), trigger=preview_interval)
+    trainer.extend(out_image(test_iter, gen, 4, args.out), trigger=display_interval)
+    if args.test_dataset is None:
+        test_dataset = "{}/test".format(args.dataset)
+    else:
+        test_dataset = args.test_dataset
+    trainer.extend(full_out_image(upscaler, test_dataset, args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 
     # Run the training
