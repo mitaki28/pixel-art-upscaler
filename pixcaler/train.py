@@ -14,7 +14,7 @@ from chainerui.extensions import CommandsExtension
 
 from pixcaler.net import Discriminator
 from pixcaler.net import Generator, Pix2Pix
-from pixcaler.updater import Pix2PixUpdater
+from pixcaler.updater import Pix2PixUpdater, BceGanLoss, LsGanLoss
 from pixcaler.dataset import AutoUpscaleDataset, CompositeAutoUpscaleDataset
 from pixcaler.visualizer import full_out_image, out_image
 from pixcaler.scaler import ChainerConverter, Upscaler
@@ -78,6 +78,15 @@ def main():
     parser.add_argument(
         '--discriminator', type=str,
         help='path to discriminator model',
+    )
+    parser.add_argument(
+        '--lam1', type=float, default=100,
+    )
+    parser.add_argument(
+        '--lam2', type=float, default=1,
+    )
+    parser.add_argument(
+        '--adv_loss', choices=('bce', 'ls'), default='bce',
     )
 
 
@@ -150,6 +159,13 @@ def main():
     train_iter = chainer.iterators.SerialIterator(train_d, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test_d, args.batchsize)
 
+    if args.adv_loss == 'bce':
+        adv_loss = BceGanLoss()
+    elif args.adv_loss == 'ls':
+        adv_loss = LsGanLoss()
+    else:
+        assert False, 'Unknown loss function type: {}'.format(args.adv_loss)
+
     # Set up a trainer
     updater = Pix2PixUpdater(
         model=model,
@@ -161,6 +177,9 @@ def main():
             'dis': opt_dis,
         },
         device=args.gpu,
+        lam1=args.lam1,
+        lam2=args.lam2,
+        adv_loss=adv_loss,
     )
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
@@ -187,7 +206,7 @@ def main():
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     upscaler = Upscaler(ChainerConverter(gen, input_size), args.factor, batch_size=args.batchsize)
-    trainer.extend(out_image(test_iter, gen, 1, args.out), trigger=display_interval)    
+    trainer.extend(out_image(test_iter, gen, 4, args.out), trigger=display_interval)    
     trainer.extend(full_out_image(upscaler, "{}/test".format(args.dataset), args.out), trigger=preview_interval)
     trainer.extend(CommandsExtension())
 
