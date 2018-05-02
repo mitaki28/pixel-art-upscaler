@@ -88,27 +88,28 @@ class Encoder(chainer.Chain):
     def __init__(self, in_ch, base_ch=64, factor=2):
         layers = {}
         w = chainer.initializers.Normal(0.02)
+        assert base_ch * factor == int(base_ch * factor), 'base_ch * factor must be integer, actual {:f}'.format(base_ch * factor)
+        base_ch_factor = int(base_ch * factor)
         if factor == 1.5:
             layers['c0'] = L.Convolution2D(in_ch, base_ch, 5, 1, 2, initialW=w)
-            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
-            layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
-            layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
+            layers['c1'] = CBR(base_ch, base_ch_factor, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
         elif factor == 2:
             layers['c0'] = L.Convolution2D(in_ch, base_ch, 5, 1, 2, initialW=w)
-            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
-            layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-            layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)            
+            layers['c1'] = CBR(base_ch, base_ch_factor, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
         elif factor == 3:
             layers['c0'] = L.Convolution2D(in_ch, base_ch, 7, 1, 3, initialW=w)
-            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='none-7', activation=F.leaky_relu, dropout=False)
-            layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
-            layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+            layers['c1'] = CBR(base_ch, base_ch_factor, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
         else:
             assert False, "factor {} is not implemented".format(factor)
-        layers['c4'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c5'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c6'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c7'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c2'] = CBR(base_ch_factor, base_ch_factor * 2, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c3'] = CBR(base_ch_factor * 2, base_ch_factor * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c4'] = CBR(base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        if factor == 1.5:
+            layers['c5'] = CBR(base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
+        else:
+            layers['c5'] = CBR(base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c6'] = CBR(base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
+        layers['c7'] = CBR(base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
         super().__init__(**layers)
 
     def __call__(self, x):
@@ -121,24 +122,26 @@ class Decoder(chainer.Chain):
     def __init__(self, out_ch, base_ch=64, factor=2):
         layers = {}
         w = chainer.initializers.Normal(0.02)
-        layers['c0'] = CBR(base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c1'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c2'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=True)
-        layers['c3'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 8, bn=True, sample='up', activation=F.relu, dropout=False)
+        assert base_ch * factor == int(base_ch * factor), 'base_ch * factor must be integer, actual {:f}'.format(base_ch * factor)
+        base_ch_factor = int(base_ch * factor)
+
+        layers['c0'] = CBR(base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='none', activation=F.relu, dropout=True)
+        layers['c1'] = CBR(base_ch_factor * 4 + base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='none', activation=F.relu, dropout=True)
         if factor == 1.5:
-            layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up-3', activation=F.relu, dropout=False)
-            layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='none', activation=F.relu, dropout=False)
-            layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none', activation=F.relu, dropout=False)
+            layers['c2'] = CBR(base_ch_factor * 4 + base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='none', activation=F.relu, dropout=True)            
+        else:
+            layers['c2'] = CBR(base_ch_factor * 4 + base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='up', activation=F.relu, dropout=True)
+        layers['c3'] = CBR(base_ch_factor * 4 + base_ch_factor * 4, base_ch_factor * 4, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c4'] = CBR(base_ch_factor * 4 + base_ch_factor * 4, base_ch_factor* 2, bn=True, sample='up', activation=F.relu, dropout=False)
+        layers['c5'] = CBR(base_ch_factor* 2 + base_ch_factor * 2, base_ch_factor, bn=True, sample='up', activation=F.relu, dropout=False)
+        if factor == 1.5:
+            layers['c6'] = CBR(base_ch_factor + base_ch_factor, base_ch, bn=True, sample='up-3', activation=F.relu, dropout=False)
             layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 5, 1, 2, initialW=w)
         elif factor == 2:
-            layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up', activation=F.relu, dropout=False)
-            layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up', activation=F.relu, dropout=False)
-            layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none', activation=F.relu, dropout=False)
+            layers['c6'] = CBR(base_ch_factor + base_ch_factor, base_ch, bn=True, sample='up', activation=F.relu, dropout=False)
             layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 5, 1, 2, initialW=w)
         elif factor == 3:
-            layers['c4'] = CBR(base_ch * 8 + base_ch * 8, base_ch * 4, bn=True, sample='up', activation=F.relu, dropout=False)
-            layers['c5'] = CBR(base_ch * 4 + base_ch * 4, base_ch * 2, bn=True, sample='up-3', activation=F.relu, dropout=False)
-            layers['c6'] = CBR(base_ch * 2 + base_ch * 2, base_ch, bn=True, sample='none-7', activation=F.relu, dropout=False)
+            layers['c6'] = CBR(base_ch_factor + base_ch_factor, base_ch, bn=True, sample='up-3', activation=F.relu, dropout=False)
             layers['c7'] = L.Convolution2D(base_ch + base_ch, out_ch, 7, 1, 3, initialW=w)
         else:
             assert False, 'factor {} is not implemented'.format(factor)
@@ -176,27 +179,26 @@ class Generator(chainer.Chain):
                 cbr.batchnorm.avg_var = xp.zeros(cbr.batchnorm.avg_var.shape, cbr.batchnorm.avg_var.dtype)        
 
 class Discriminator(chainer.Chain):
-    def __init__(self, in_ch, out_ch, base_ch=64, factor=2):
-        assert base_ch % 2 == 0
+    def __init__(self, in_ch, out_ch, base_ch=16, factor=2):
+        assert base_ch * factor == int(base_ch * factor), 'base_ch * factor must be integer, actual {:f}'.format(base_ch * factor)
+        base_ch_factor = int(base_ch * factor)
         layers = {}
         w = chainer.initializers.Normal(0.02)
         if factor == 1.5:
-            layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
-            layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
-            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down', activation=F.leaky_relu, dropout=False)            
+            layers['c0_0'] = CBR(in_ch, base_ch_factor, bn=False, sample='down-3', activation=F.leaky_relu, dropout=False)
+            layers['c0_1'] = CBR(out_ch, base_ch_factor, bn=False, sample='down-3', activation=F.leaky_relu, dropout=False)
         elif factor == 2:
-            layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
-            layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample='none-5', activation=F.leaky_relu, dropout=False)
-            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+            layers['c0_0'] = CBR(in_ch, base_ch_factor, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
+            layers['c0_1'] = CBR(out_ch, base_ch_factor, bn=False, sample='down', activation=F.leaky_relu, dropout=False)
         elif factor == 3:
-            layers['c0_0'] = CBR(in_ch, base_ch // 2, bn=False, sample='none-7', activation=F.leaky_relu, dropout=False)
-            layers['c0_1'] = CBR(out_ch, base_ch // 2, bn=False, sample='none-7', activation=F.leaky_relu, dropout=False)
-            layers['c1'] = CBR(base_ch, base_ch * 2, bn=True, sample='down-3', activation=F.leaky_relu, dropout=False)
+            layers['c0_0'] = CBR(in_ch, base_ch_factor, bn=False, sample='down-3', activation=F.leaky_relu, dropout=False)
+            layers['c0_1'] = CBR(out_ch, base_ch_factor, bn=False, sample='down-3', activation=F.leaky_relu, dropout=False)
         else:
             assert False, 'factor {} is not implemented'.format(factor)
-        layers['c2'] = CBR(base_ch * 2, base_ch * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c3'] = CBR(base_ch * 4, base_ch * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
-        layers['c4'] = L.Convolution2D(base_ch * 8, 1, 3, 1, 1, initialW=w)
+        layers['c1'] = CBR(base_ch_factor + base_ch_factor, base_ch_factor * 4, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c2'] = CBR(base_ch_factor * 4, base_ch_factor * 8, bn=True, sample='down', activation=F.leaky_relu, dropout=False)
+        layers['c3'] = CBR(base_ch_factor * 8, base_ch_factor * 16, bn=True, sample='none', activation=F.leaky_relu, dropout=False)
+        layers['c4'] = L.Convolution2D(base_ch_factor * 16, 1, 3, 1, 1, initialW=w)
         super().__init__(**layers)
 
     def __call__(self, x_0, x_1):
@@ -211,5 +213,5 @@ class Pix2Pix(chainer.Chain):
     def __init__(self, in_ch, out_ch, base_ch=64, factor=2):
         super().__init__(
             gen=Generator(in_ch, out_ch, base_ch=base_ch, factor=factor),
-            dis=Discriminator(in_ch, out_ch, base_ch=base_ch, factor=factor),
+            dis=Discriminator(in_ch, out_ch, base_ch=base_ch // 4, factor=factor),
         )
