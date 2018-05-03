@@ -41,17 +41,17 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
                 (self.fine_size, self.fine_size), Image.NEAREST,
             )
         else:
-            source = resize(
-                resize(
+            source = upsample_nearest_neighbor(
+                downsample_nearest_neighbor(
                     target,
-                    (int(self.fine_size // self.factor), int(self.fine_size // self.factor)), Image.NEAREST,
+                    self.factor
                 ),
-                (self.fine_size, self.fine_size), Image.NEAREST,
+                self.factor,
             )
         return source, target
 
 class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
-    def __init__(self, data_dir, fine_size=64):
+    def __init__(self, data_dir, fine_size=64, factor=2):
         import pixcaler.charset
         self.data_dir = Path(data_dir)
         self.chartips = list((self.data_dir/'chartip').glob("*.png"))
@@ -61,6 +61,7 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         self.charset = list(pixcaler.charset.ALL)
 
         self.fine_size = fine_size
+        self.factor = factor
         print("{} chartips loaded".format(len(self.chartips)))
         print("{} tiles loaded".format(len(self.tiles)))
         print("{} objs loaded".format(len(self.objs)))
@@ -113,12 +114,12 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         back = back.reshape(4 * self.fine_size ** 2)
         back[m] = front.reshape(4 * self.fine_size ** 2)[m]
         target = back.reshape((4, self.fine_size, self.fine_size))
-        source = resize(
-            resize(
+        source = upsample_nearest_neighbor(
+            downsample_nearest_neighbor(
                 target,
-                (self.fine_size // 2, self.fine_size // 2), Image.NEAREST,
+                self.factor
             ),
-            (self.fine_size, self.fine_size), Image.NEAREST,
+            self.factor,
         )
         return source, target
 

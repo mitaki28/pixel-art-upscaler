@@ -2,6 +2,7 @@ import random
 import math
 import itertools
 from pathlib import Path
+from fractions import Fraction
 
 import numpy as np
 from PIL import Image
@@ -33,32 +34,27 @@ def hwc_array_to_img(x):
         np.asarray(np.clip(x * 127.5 + 127.5, 0.0, 255.0), dtype=np.uint8)
     )
 
-def downsample_nearest_neighbor(img, r):
-    c, h, w = img.shape
-    return (
-        img
-            .reshape((c, h // r, r, w // r, r))
-            .transpose((2, 4, 0, 1, 3))
-            .reshape((r * r, c, h // r, w // r))[0]
-    )
-
 def upsample_nearest_neighbor(img, r):
     c, h, w = img.shape
-    return (
-        np.tile(img.reshape((c, h, w, 1)), r * r)
-            .reshape((c, h, w, r, r))
-            .transpose((0, 1, 3, 2, 4))
-            .reshape(c, h * r, w * r)
-    )
+    f = Fraction(r)
+    assert h % f.denominator == 0 and w % f.denominator == 0
+    nh, nw = h // f.denominator * f.numerator, w // f.denominator * f.numerator
+    idx = np.indices((nh, nw))
+    idx *= f.denominator
+    idx //= f.numerator
+    return img[:,idx[0],idx[1]]
 
+def downsample_nearest_neighbor(img, r):
+    return upsample_nearest_neighbor(img, Fraction(1) / Fraction(r))
 
+# TODO: 小数倍率に対応する
 def downscale_random_nearest_neighbor(img, r):
     c, h, w = img.shape
     img = img.reshape((c, h // r, r, w // r, r)).transpose((1, 3, 2, 4, 0)).reshape((h // r, w // r, r * r, c))
     hw_idx = np.indices((h // r, w // r))
     c_idx = np.random.randint(0, 4, img.shape[:2])
     return img[hw_idx[0], hw_idx[1], c_idx].transpose((2, 0, 1))
-
+    
 def align_nearest_neighbor_scaled_image(img, r):
     w, h = img.size
     return img.resize((int(w // r), int(h // r)), Image.NEAREST).resize((w, h), Image.NEAREST)
@@ -92,17 +88,19 @@ def chunks(iterable, size):
         yield itertools.chain([first], itertools.islice(iterator, size - 1))
 
 if __name__ == '__main__':
-    r = 2
-    h, w, c = 8, 16, 4
-    x = np.random.randint(0, 256, size=(c, h, w), dtype=np.uint8)
-    y = upsample_nearest_neighbor(x, r)
-    assert y.shape == (c, h * r, w *r)
-    for (i, j, k) in np.ndindex(y.shape):
-        s = y[i, j, k]
-        t = x[i, j // r, k // r]
-        assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)
-    z = downsample_nearest_neighbor(x, r)
-    for (i, j, k) in np.ndindex(z.shape):
-        s = z[i, j, k]
-        t = x[i, j * r, k * r]
-        assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)
+    for r in (1.5, 2, 3):
+        print(r)
+        h, w, c = 6, 12, 4
+        x = np.arange(h * w * c).reshape((c, h, w))
+        y = upsample_nearest_neighbor(x, r)
+        assert y.shape == (c, h * r, w *r)
+        for (i, j, k) in np.ndindex(y.shape):
+            s = y[i, j, k]
+            t = x[i, int(j // r), int(k // r)]
+            assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)
+        z = downsample_nearest_neighbor(x, r)
+        for (i, j, k) in np.ndindex(z.shape):
+            s = z[i, j, k]
+            t = x[i, int(j * r), int(k * r)]
+            assert s == t, '[{}, {}, {}], {} != {}'.format(i, j, k, s, t)
+        print(x, y, z)
