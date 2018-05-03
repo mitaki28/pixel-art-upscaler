@@ -27,7 +27,7 @@ export const RunningUpscaleTaskPreview = observer(({ task }: { task: UpscaleTask
                 WebkitTransfrom: "translate(-50%, -50%)",
                 MsTransfrom: "translate(-50%, -50%)",
                 transform: "translate(-50%, -50%)"
-            }}>
+            } as any}>
                 {task.patchUpscaleTasks.map((row, i) =>
                     <tr key={i}>
                         {row.map((col, j) => (
