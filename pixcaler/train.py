@@ -125,13 +125,16 @@ def main():
     opt_dis = make_optimizer(dis)
 
     if args.composite:
-        assert args.factor == 2
-        input_size = 64
+        input_size = int(32 * args.factor)
         train_d = CompositeAutoUpscaleDataset(
             args.dataset,
+            fine_size=input_size,
+            factor=args.factor,
         )
         test_d = CompositeAutoUpscaleDataset(
             args.dataset,
+            fine_size=input_size,
+            factor=args.factor,
         )
     else:
         input_size = int(32 * args.factor)

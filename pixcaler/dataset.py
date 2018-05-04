@@ -76,7 +76,7 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         if r < 0.5:
             with Image.open(str(self.chartips[np.random.randint(len(self.chartips))])) as img:
                 front = img_to_chw_array(img)
-        elif r < 0.75:
+        elif r < 1.0:
             with Image.open(str(self.objs[np.random.randint(len(self.objs))])) as img:
                 front = img_to_chw_array(img)
         else:
@@ -97,10 +97,10 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         front = random_flip(front, x_random=True)
         
         r = random.random()
-        if r < 0.9:
+        if r < 0.7:
             with Image.open(str(self.tiles[np.random.randint(len(self.tiles))])) as img:
                 back = img_to_chw_array(img)
-        elif r < 0.95:
+        elif r < 0.8:
             r, g, b = [np.random.randint(256) for i in range(3)]
             back = Image.new('RGBA', (self.fine_size, self.fine_size), (r, g, b))
             back = img_to_chw_array(back)
