@@ -41,12 +41,13 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
                 (self.fine_size, self.fine_size), Image.NEAREST,
             )
         else:
-            source = upsample_nearest_neighbor(
+            source = resize(
                 downsample_nearest_neighbor(
                     target,
                     self.factor
                 ),
-                self.factor,
+                (self.fine_size, self.fine_size),
+                Image.BILINEAR,
             )
         return source, target
 
@@ -114,12 +115,13 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         back = back.reshape(4 * self.fine_size ** 2)
         back[m] = front.reshape(4 * self.fine_size ** 2)[m]
         target = back.reshape((4, self.fine_size, self.fine_size))
-        source = upsample_nearest_neighbor(
+        source = resize(
             downsample_nearest_neighbor(
                 target,
                 self.factor
             ),
-            self.factor,
+            (self.fine_size, self.fine_size),
+            Image.BILINEAR,
         )
         return source, target
 

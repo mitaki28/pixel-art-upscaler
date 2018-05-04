@@ -104,10 +104,10 @@ class Upscaler:
         )
 
     def generate_comparable_image(img):
-        return chw_array_to_img(upsample_nearest_neighbor(img_to_chw_array(img), self.factor))
+        return img.resize((int(img.size[0] * self.factor), int(img.size[1] * self.factor)), Image.BILINEAR)
 
     def __call__(self, img):
-        img = chw_array_to_img(upsample_nearest_neighbor(img_to_chw_array(img), self.factor))
+        img = img.resize((int(img.size[0] * self.factor), int(img.size[1] * self.factor)), Image.BILINEAR)
         return self.executor(img)
 
 class Downscaler:
