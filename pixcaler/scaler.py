@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 
 import chainer
-from pixcaler.util import chw_array_to_img, img_to_chw_array, align_nearest_neighbor_scaled_image, pad_by_multiply_of, chunks
+from pixcaler.util import chw_array_to_img, img_to_chw_array, align_nearest_neighbor_scaled_image, pad_by_multiply_of, chunks, upsample_nearest_neighbor, downsample_nearest_neighbor
 
 
 class NullConversionEventHandler:
@@ -36,36 +36,39 @@ class ChainerConverter(Converter):
         return [chw_array_to_img(x) for x in chainer.cuda.to_cpu(x_out.data)]
 
 class PatchedExecuter:
-    def __init__(self, converter, alignment_factor, batch_size, handler=None):
-        self.patch_size = converter.get_input_size() // 2
+    def __init__(self, converter, alignment_factor, batch_size, padding='half', handler=None):
+        if padding == 'half':
+            self.pad_size = converter.get_input_size() // 4
+        elif padding == 'none':
+            self.pad_size = 0
+        else:
+            assert False, 'Unknown padding type: {}'.format(padding)
+        self.patch_size =  converter.get_input_size() - 2 * self.pad_size
+
         self.batch_size = batch_size
         self.converter = converter
         self.alignment_factor = alignment_factor
         self.handler = NullConversionEventHandler() if handler is None else handler
 
     def __call__(self, img):
-        ps = self.patch_size
         w_org, h_org = img.size
-        img = pad_by_multiply_of(img, ps, ps // 2)
-        if self.alignment_factor > 1:
-            img = align_nearest_neighbor_scaled_image(img, self.alignment_factor)
-        
-        n_i = (img.size[0] - ps // 2 * 2) // ps
-        n_j = (img.size[1] - ps // 2 * 2) // ps
+        img = pad_by_multiply_of(img, self.patch_size, self.pad_size)        
+        n_i = (img.size[0] - self.pad_size * 2) // self.patch_size
+        n_j = (img.size[1] - self.pad_size * 2) // self.patch_size
         converted_img = Image.new('RGBA', (
-            img.size[0] - ps // 2 * 2,
-            img.size[1] - ps // 2 * 2,
+            img.size[0] - self.pad_size * 2,
+            img.size[1] - self.pad_size * 2,
         ))
         def _patch_generator():            
             for i in range(n_i):
                 for j in range(n_j):
-                    x = i * ps
-                    y = j * ps
+                    x = i * self.patch_size
+                    y = j * self.patch_size
                     yield (i, j, x, y), img.crop((
                         x,
                         y,
-                        x + 2 * ps,
-                        y + 2 * ps,
+                        x + self.patch_size + 2 * self.pad_size,
+                        y + self.patch_size + 2 * self.pad_size,
                     ))
         for chunk in chunks(_patch_generator(), self.batch_size):
             cords, batch = map(list, zip(*chunk))
@@ -73,8 +76,8 @@ class PatchedExecuter:
             for (i, j, x, y), converted_patch in zip(cords, converted_batch):
                 converted_img.paste(
                     converted_patch.crop((
-                        ps // 2, ps // 2,
-                        ps // 2 + ps, ps // 2 + ps,
+                        self.pad_size, self.pad_size,
+                        self.pad_size + self.patch_size, self.pad_size + self.patch_size,
                     )),
                     (x, y),
                 )
@@ -90,20 +93,21 @@ class PatchedExecuter:
 
 
 class Upscaler:
-    def __init__(self, converter, factor, batch_size=1, handler=None):
+    def __init__(self, converter, factor, batch_size=1, padding='half', handler=None):
         self.factor = factor
         self.executor = PatchedExecuter(
             converter,
             alignment_factor=factor,
             batch_size=batch_size,
+            padding=padding,
             handler=handler,
         )
 
     def generate_comparable_image(img):
-        return img.resize((int(img.size[0] * self.factor), int(img.size[1] * self.factor)), Image.NEAREST)        
+        return chw_array_to_img(upsample_nearest_neighbor(img_to_chw_array(img), self.factor))
 
     def __call__(self, img):
-        img = img.resize((int(img.size[0] * self.factor), int(img.size[1] * self.factor)), Image.NEAREST)
+        img = chw_array_to_img(upsample_nearest_neighbor(img_to_chw_array(img), self.factor))
         return self.executor(img)
 
 class Downscaler:
@@ -117,11 +121,11 @@ class Downscaler:
         )
 
     def generate_comparable_image(img):
-        return img.resize((int(img.size[0] // self.factor), int(img.size[1] // self.factor)), Image.NEAREST)
+        return chw_array_to_img(downsample_nearest_neighbor(img_to_chw_array(img), self.factor))
 
     def __call__(self, img):
         img = self.executor(img)
-        return img.resize((int(img.size[0] // self.factor), int(img.size[1] // self.factor)), Image.NEAREST)
+        return chw_array_to_img(downsample_nearest_neighbor(img_to_chw_array(img), self.factor))
 
 class Refiner:
     def __init__(self, converter, batch_size=1, handler=None):
@@ -137,3 +141,23 @@ class Refiner:
 
     def __call__(self, img):
         return self.executor(img)
+
+class MultiStageScaler:
+    def __init__(self, scalers):
+        self.scalers = scalers
+
+    def generate_comparable_image(img):
+        for scaler in self.scalers:
+            img = scaler.generate_comparable_image(img)
+        return img
+
+    def __call__(self, img):
+        for scaler in self.scalers:
+            img = scaler(img)
+        return img
+
+class PrintLogger:
+    def __init__(self, context=""):
+        self.context = context
+    def on_patch(self, patch, idx, n):
+        print("{}: {}/{}".format(self.context, idx + 1, n), end='\r')
