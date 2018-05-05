@@ -47,13 +47,12 @@ def upsample_nearest_neighbor(img, r):
 def downsample_nearest_neighbor(img, r):
     return upsample_nearest_neighbor(img, Fraction(1) / Fraction(r))
 
-# TODO: 小数倍率に対応する
-def downscale_random_nearest_neighbor(img, r):
+def downsample_random_nearest_neighbor(img, r):
     c, h, w = img.shape
-    img = img.reshape((c, h // r, r, w // r, r)).transpose((1, 3, 2, 4, 0)).reshape((h // r, w // r, r * r, c))
-    hw_idx = np.indices((h // r, w // r))
-    c_idx = np.random.randint(0, 4, img.shape[:2])
-    return img[hw_idx[0], hw_idx[1], c_idx].transpose((2, 0, 1))
+    nh, nw = int(h // r), int(w // r)
+    idx = np.indices((nh, nw))
+    idx = (r * (idx + np.random.random(idx.shape))).astype(np.int)
+    return img[:,idx[0],idx[1]]
     
 def align_nearest_neighbor_scaled_image(img, r):
     w, h = img.size

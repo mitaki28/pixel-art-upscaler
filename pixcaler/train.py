@@ -128,6 +128,7 @@ def main():
         input_size = int(32 * args.factor)
         train_d = CompositeAutoUpscaleDataset(
             args.dataset,
+            random_nn=args.use_random_nn_downscale,            
             fine_size=input_size,
             factor=args.factor,
         )

@@ -14,15 +14,16 @@ from chainercv.transforms import resize_contain
 from chainercv.transforms import resize
 from chainercv.utils import read_image
 
-from pixcaler.util import img_to_chw_array, downscale_random_nearest_neighbor, downsample_nearest_neighbor, upsample_nearest_neighbor
+from pixcaler.util import img_to_chw_array, downsample_random_nearest_neighbor, downsample_nearest_neighbor, upsample_nearest_neighbor
     
 class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
-    def __init__(self, target_dir, random_nn=False, fine_size=64, factor=2):
+    def __init__(self, target_dir, random_nn=False, fine_size=64, factor=2, upscale_algorithm=Image.BILINEAR):
         self.target_dir = Path(target_dir)
         self.filepaths = list(self.target_dir.glob("*.png"))
         self.random_nn = random_nn
         self.fine_size = fine_size
         self.factor = factor
+        self.upscale_algorithm = upscale_algorithm
         print("{} images loaded".format(len(self.filepaths)))
     
     def __len__(self):
@@ -37,8 +38,12 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
         target = random_flip(target, x_random=True)
         if self.random_nn:
             source = resize(
-                downscale_random_nearest_neighbor(target.copy(), self.factor),
-                (self.fine_size, self.fine_size), Image.NEAREST,
+                downsample_random_nearest_neighbor(
+                    target,
+                    self.factor,
+                ),
+                (self.fine_size, self.fine_size),
+                self.upscale_algorithm,
             )
         else:
             source = resize(
@@ -47,12 +52,12 @@ class AutoUpscaleDataset(dataset_mixin.DatasetMixin):
                     self.factor
                 ),
                 (self.fine_size, self.fine_size),
-                Image.BILINEAR,
+                self.upscale_algorithm,
             )
         return source, target
 
 class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
-    def __init__(self, data_dir, fine_size=64, factor=2):
+    def __init__(self, data_dir, random_nn=False, fine_size=64, factor=2, upscale_algorithm=Image.BILINEAR):
         import pixcaler.charset
         self.data_dir = Path(data_dir)
         self.chartips = list((self.data_dir/'chartip').glob("*.png"))
@@ -61,8 +66,10 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         self.fonts = list((self.data_dir/'font').glob("*.ttf"))
         self.charset = list(pixcaler.charset.ALL)
 
+        self.random_nn = random_nn
         self.fine_size = fine_size
         self.factor = factor
+        self.upscale_algorithm = upscale_algorithm
         print("{} chartips loaded".format(len(self.chartips)))
         print("{} tiles loaded".format(len(self.tiles)))
         print("{} objs loaded".format(len(self.objs)))
@@ -115,14 +122,24 @@ class CompositeAutoUpscaleDataset(dataset_mixin.DatasetMixin):
         back = back.reshape(4 * self.fine_size ** 2)
         back[m] = front.reshape(4 * self.fine_size ** 2)[m]
         target = back.reshape((4, self.fine_size, self.fine_size))
-        source = resize(
-            downsample_nearest_neighbor(
-                target,
-                self.factor
-            ),
-            (self.fine_size, self.fine_size),
-            Image.BILINEAR,
-        )
+        if self.random_nn:
+            source = resize(
+                downsample_random_nearest_neighbor(
+                    target,
+                    self.factor,
+                ),
+                (self.fine_size, self.fine_size),
+                self.upscale_algorithm,
+            )
+        else:
+            source = resize(
+                downsample_nearest_neighbor(
+                    target,
+                    self.factor
+                ),
+                (self.fine_size, self.fine_size),
+                self.upscale_algorithm,
+            )
         return source, target
 
 class AutoUpscaleDatasetReverse(AutoUpscaleDataset):
