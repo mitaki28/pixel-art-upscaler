@@ -6,6 +6,7 @@ import { Upscaler } from "./Upscaler";
 import { Task } from "./Task";
 import { DataUrlImage } from "./Image";
 import { downsample_nearest_neighbor, upsample_nearest_neighbor } from "../util/tensor";
+import { resizeBilinear } from "../util/image";
 
 const SIZE_FACTOR = 64;
 
@@ -100,7 +101,9 @@ export class UpscaleTask extends Task<DataUrlImage> {
 
     @action.bound
     private async scale2x(src: DataUrlImage): Promise<DataUrlImage> {
-        return DataUrlImage.fromTf(upsample_nearest_neighbor(await src.toTf()));
+        const img = await src.toJimp();
+        const [w, h] = [img.bitmap.width, img.bitmap.height];
+        return await DataUrlImage.fromJimp(resizeBilinear(img, w * 2, h * 2));
     }
 
     @action.bound
@@ -143,11 +146,7 @@ export class UpscaleTask extends Task<DataUrlImage> {
 
     @action.bound
     private async align(src: DataUrlImage): Promise<DataUrlImage> {
-        return await DataUrlImage.fromTf(
-            upsample_nearest_neighbor(
-                downsample_nearest_neighbor(await src.toTf()),
-            ),
-        );
+        return src;
     }
 
     @action.bound

@@ -16,7 +16,7 @@ export class App {
     constructor() {
         this._upscalerLoaders = {
             "stable": new TfjsUpscalerLoader("./model/tfjs/stable-20170425/model.json"),
-            "clear": new TfjsUpscalerLoader("./model/tfjs/clear-20170430/model.json"),
+            "clear": new TfjsUpscalerLoader("./model/tfjs/v0.4-2x-lam8/model.json"),
         };
         this.upscaleConversionList = new UpscaleConversionList();
         this._uploadKey = generateRandomString();
