@@ -126,13 +126,13 @@ class Pix2PixLogger:
 
 class Pix2Pix(object):
     def __init__(self,
-        size=64,
+        size=None,
         in_ch=4,
         out_ch=4,
         base_ch=64,
         factor=2,
     ):
-        self.size = 64
+        self.size = size if size is not None else int(factor * 32)
         self.in_ch = in_ch
         self.out_ch = out_ch
         self.factor = factor
@@ -141,6 +141,7 @@ class Pix2Pix(object):
             in_ch,
             out_ch,
             base_ch,
+            factor,
         )
 
     def _load_generator(self, generator):

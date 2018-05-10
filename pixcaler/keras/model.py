@@ -18,11 +18,11 @@ def leaky_relu(h):
 def weight_decay():
     return keras.regularizers.l2(0.00001)
 
-def down_cbr(h, filters):
+def down_cbr(h, filters, kernel_size=4, strides=2):
     h = keras.layers.Conv2D(
         filters=filters,
-        kernel_size=4,
-        strides=2,
+        kernel_size=kernel_size,
+        strides=strides,
         padding='same',
         kernel_initializer=random_normal(),
         kernel_regularizer=weight_decay(),
@@ -31,132 +31,120 @@ def down_cbr(h, filters):
     h = leaky_relu(h)
     return h
 
-def up_cbr(h, filters, dropout=False, use_resize_conv=False):
-    if use_resize_conv:
-        h = keras.layers.UpSampling2D(
-            size=(2, 2),
-        )(h)
-        h = keras.layers.Conv2D(
-            filters=filters,
-            kernel_size=3,
-            strides=1,
-            padding='same',
-            kernel_initializer=random_normal(),
-            kernel_regularizer=weight_decay(),               
-        )(h)
-    else:
-        h = keras.layers.Conv2DTranspose(
-            filters=filters,
-            kernel_size=4,
-            strides=2,
-            padding='same',
-            kernel_initializer=random_normal(),
-            kernel_regularizer=weight_decay(),
-        )(h)
+def up_cbr(h, filters, kernel_size=4, strides=2, dropout=False):
+    h = keras.layers.Conv2DTranspose(
+        filters=filters,
+        kernel_size=kernel_size,
+        strides=strides,
+        padding='same',
+        kernel_initializer=random_normal(),
+        kernel_regularizer=weight_decay(),
+    )(h)
     h = batchnorm(h)
     if dropout:
         h = keras.layers.Dropout(0.5)(h)
     h = keras.layers.core.Activation('relu')(h)
     return h
 
-def generator(w, in_ch, out_ch, base_ch, use_resize_conv=False):
+def generator(w, in_ch, out_ch, base_ch, factor):
     x = keras.layers.Input(shape=(w, w, in_ch))
 
-    h = keras.layers.Conv2D(
-        filters=base_ch,
-        kernel_size=5,
-        strides=1,
-        padding='same',
-        kernel_initializer=random_normal(),     
-        kernel_regularizer=weight_decay(),
-    )(x)
-    
-    h0 = leaky_relu(h)
-    h = keras.layers.Conv2D(
-        filters=base_ch * 2,
-        kernel_size=3,
-        strides=1,
-        padding='same',
-        kernel_initializer=random_normal(),
-        kernel_regularizer=weight_decay(),           
-    )(h0)
-    h = batchnorm(h)
-    h1 = leaky_relu(h)
-
-    h2 = down_cbr(h1, base_ch * 4)
-    h3 = down_cbr(h2, base_ch * 8)
+    if factor == 1.5:
+        h = keras.layers.Conv2D(
+            filters=base_ch,
+            kernel_size=5,
+            strides=1,
+            padding='same',
+            kernel_initializer=random_normal(),     
+            kernel_regularizer=weight_decay(),
+        )(x)
+        h0 = leaky_relu(h)
+        h1 = down_cbr(h0, base_ch * 2, kernel_size=3, strides=1)
+        h2 = down_cbr(h1, base_ch * 4, kernel_size=3, strides=1)
+        h3 = down_cbr(h2, base_ch * 8, kernel_size=5, strides=3)
+    elif factor == 2:
+        h = keras.layers.Conv2D(
+            filters=base_ch,
+            kernel_size=5,
+            strides=1,
+            padding='same',
+            kernel_initializer=random_normal(),     
+            kernel_regularizer=weight_decay(),
+        )(x)
+        h0 = leaky_relu(h)
+        h1 = down_cbr(h0, base_ch * 2, kernel_size=3, strides=1)
+        h2 = down_cbr(h1, base_ch * 4)
+        h3 = down_cbr(h2, base_ch * 8)
+    else:
+        assert False, 'unsupported factor: {}'.format(factor)
     h4 = down_cbr(h3, base_ch * 8)
     h5 = down_cbr(h4, base_ch * 8)
     h6 = down_cbr(h5, base_ch * 8)
     h7 = down_cbr(h6, base_ch * 8)
 
-    h = up_cbr(h7, base_ch * 8, dropout=True, use_resize_conv=use_resize_conv)
+    h = up_cbr(h7, base_ch * 8, dropout=True)
 
     h = keras.layers.concatenate([h, h6])
-    h = up_cbr(h, base_ch * 8, dropout=True, use_resize_conv=use_resize_conv)
+    h = up_cbr(h, base_ch * 8, dropout=True)
 
     h = keras.layers.concatenate([h, h5])
-    h = up_cbr(h, base_ch * 8, dropout=True, use_resize_conv=use_resize_conv)
+    h = up_cbr(h, base_ch * 8, dropout=True)
 
     h = keras.layers.concatenate([h, h4])
-    h = up_cbr(h, base_ch * 8, dropout=False, use_resize_conv=use_resize_conv)
+    h = up_cbr(h, base_ch * 8, dropout=False)
 
-    h = keras.layers.concatenate([h, h3])
-    h = up_cbr(h, base_ch * 4, dropout=False, use_resize_conv=use_resize_conv)
+    if factor == 1.5:
+        h = keras.layers.concatenate([h, h3])
+        h = up_cbr(h, base_ch * 4, kernel_size=5, strides=3, dropout=False)
 
-    h = keras.layers.concatenate([h, h2])
-    h = up_cbr(h, base_ch * 2, dropout=False, use_resize_conv=use_resize_conv)
+        h = keras.layers.concatenate([h, h2])
+        h = up_cbr(h, base_ch * 2, kernel_size=3, strides=1, dropout=False)
 
-    h = keras.layers.concatenate([h, h1])
-    h = keras.layers.Conv2D(
-        filters=base_ch,
-        kernel_size=3,
-        strides=1,
-        padding='same',
-        kernel_initializer=random_normal(),
-        kernel_regularizer=weight_decay(),        
-    )(h)
-    h = batchnorm(h)
-    h = keras.layers.Activation('relu')(h)
+        h = keras.layers.concatenate([h, h1])
+        h = up_cbr(h, base_ch, kernel_size=3, strides=1, dropout=False)
 
-    h = keras.layers.concatenate([h, h0])
-    h = keras.layers.Conv2D(
-        filters=out_ch,
-        kernel_size=5,
-        strides=1,
-        padding='same',
-        kernel_initializer=random_normal(),
-        kernel_regularizer=weight_decay(),
-        name='output_gen',               
-    )(h)
+        h = keras.layers.concatenate([h, h0])
+        h = keras.layers.Conv2D(
+            filters=out_ch,
+            kernel_size=5,
+            strides=1,
+            padding='same',
+            kernel_initializer=random_normal(),
+            kernel_regularizer=weight_decay(),
+            name='output_gen',               
+        )(h)
+    elif factor == 2:
+        h = keras.layers.concatenate([h, h3])
+        h = up_cbr(h, base_ch * 4, dropout=False)
+
+        h = keras.layers.concatenate([h, h2])
+        h = up_cbr(h, base_ch * 2, dropout=False)
+
+        h = keras.layers.concatenate([h, h1])
+        h = up_cbr(h, base_ch, kernel_size=3, strides=1, dropout=False)
+
+        h = keras.layers.concatenate([h, h0])
+        h = keras.layers.Conv2D(
+            filters=out_ch,
+            kernel_size=5,
+            strides=1,
+            padding='same',
+            kernel_initializer=random_normal(),
+            kernel_regularizer=weight_decay(),
+            name='output_gen',               
+        )(h)
+    else:
+        assert False, 'unsupported factor: {}'.format(factor)
     return x, h
 
-def discriminator(w, ch0, ch1, base_ch):
+def discriminator(w, ch0, ch1, base_ch, factor):
     assert base_ch % 2 == 0
 
     x0 = keras.layers.Input(shape=(w, w, ch0))
     x1 = keras.layers.Input(shape=(w, w, ch1))
-    h0 = keras.layers.Conv2D(
-        filters=base_ch // 2,
-        kernel_size=5,
-        strides=1,
-        padding='same',
-        kernel_initializer=random_normal(),
-        kernel_regularizer=weight_decay(),        
-    )(x0)
-    h0 = batchnorm(h0)
-    h0 = leaky_relu(h0)
 
-    h1 = keras.layers.Conv2D(
-        filters=base_ch // 2,
-        kernel_size=5,
-        strides=1,
-        padding='same',
-        kernel_initializer=random_normal(),
-        kernel_regularizer=weight_decay(),                
-    )(x1)
-    h1 = batchnorm(h1)
-    h1 = leaky_relu(h1)
+    h0 = down_cbr(x0, base_ch // 2, kernel_size=5, strides=1)
+    h1 = down_cbr(x1, base_ch // 2, kernel_size=5, strides=1)
 
     h = down_cbr(keras.layers.concatenate([h0, h1]), base_ch * 2)
     h = down_cbr(h, base_ch * 4)
@@ -171,9 +159,9 @@ def discriminator(w, ch0, ch1, base_ch):
     )(h)
     return x0, x1, h
 
-def pix2pix(w, in_ch, out_ch, base_ch, use_resize_conv=False):
-    gen_in, gen_out = generator(w, in_ch, out_ch, base_ch, use_resize_conv)
-    dis_in_0, dis_in_1, dis_out = discriminator(w, in_ch, out_ch, base_ch)
+def pix2pix(w, in_ch, out_ch, base_ch, factor):
+    gen_in, gen_out = generator(w, in_ch, out_ch, base_ch, factor)
+    dis_in_0, dis_in_1, dis_out = discriminator(w, in_ch, out_ch, base_ch, factor)
 
     gen = keras.models.Model(gen_in, gen_out, 'Generator')
     gen_frozen = keras.models.Model(gen_in, gen_out, 'Generator-Frozen')
