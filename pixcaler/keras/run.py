@@ -187,8 +187,16 @@ class Pix2Pix(object):
         with (out_dir/'args').open('w') as f:
             f.write(json.dumps(sys.argv, sort_keys=True, indent=4))
         dataset_dir = Path(dataset_dir)
-        train_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir), factor=self.factor)
-        test_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir), factor=self.factor)
+        train_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(
+            str(dataset_dir),
+            fine_size=self.size,
+            factor=self.factor,
+        )
+        test_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(
+            str(dataset_dir),
+            fine_size=self.size,
+            factor=self.factor,
+        )
         
         train_iterator = chainer.iterators.SerialIterator(
             train_dataset,
