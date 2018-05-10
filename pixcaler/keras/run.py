@@ -130,10 +130,12 @@ class Pix2Pix(object):
         in_ch=4,
         out_ch=4,
         base_ch=64,
+        factor=2,
     ):
         self.size = 64
         self.in_ch = in_ch
         self.out_ch = out_ch
+        self.factor = factor
         self.gen, self.dis, self.gen_trainer, self.dis_trainer = pixcaler.keras.model.pix2pix(
             size,
             in_ch,
@@ -184,8 +186,8 @@ class Pix2Pix(object):
         with (out_dir/'args').open('w') as f:
             f.write(json.dumps(sys.argv, sort_keys=True, indent=4))
         dataset_dir = Path(dataset_dir)
-        train_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
-        test_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir))
+        train_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir), factor=self.factor)
+        test_dataset = pixcaler.dataset.CompositeAutoUpscaleDataset(str(dataset_dir), factor=self.factor)
         
         train_iterator = chainer.iterators.SerialIterator(
             train_dataset,
@@ -273,6 +275,7 @@ class Pix2Pix(object):
         converter = KerasConverter(self.gen, self.size)
         scaler = pixcaler.scaler.Upscaler(
             converter,
+            self.factor,
             batch_size,
         )
         full_visualizer = pixcaler.visualizer.ScalerVisualizer(
