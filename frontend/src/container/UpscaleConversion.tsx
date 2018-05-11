@@ -61,7 +61,7 @@ export const LoadTaskPreviewContainer = observer(({ task }: { task: Task<DataUrl
     }
 });
 
-export const Scale2xTaskPreviewContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
+export const ScaleTaskPreviewContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
     if (task === null) {
         return null;
     }
@@ -107,7 +107,7 @@ export const LoadTaskProgressContainer = observer(({ task }: { task: Task<DataUr
     }
 });
 
-export const Scale2xTaskProgressContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
+export const ScaleTaskProgressContainer = observer(({ task }: { task: Task<DataUrlImage> | null }) => {
     if (task === null) {
         return <ProgressBar active={false} now={0} />;
     }
@@ -152,8 +152,8 @@ export const UpscaleConversionFlowProgressContainer = observer(({ store }: { sto
     switch (stage.id) {
         case "load":
             return <LoadTaskProgressContainer task={stage.task} />
-        case "scale2x":
-            return <Scale2xTaskProgressContainer task={stage.task} />
+        case "scale":
+            return <ScaleTaskProgressContainer task={stage.task} />
         case "upscale":
             return <UpscaleTaskProgressContainer task={stage.task} />
     }
@@ -179,7 +179,7 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
                                 ) : (
                                     <Nav bsStyle="pills" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                                         <NavItem eventKey="load">元画像</NavItem>
-                                        <NavItem eventKey="scale2x">元画像(2x)</NavItem>
+                                        <NavItem eventKey="scale">元画像({this.props.store.factor}x)</NavItem>
                                         <NavItem eventKey="upscale">変換結果</NavItem>
                                     </Nav>
                                 )}
@@ -191,8 +191,8 @@ export class UpscaleConversionContainer extends React.Component<{ store: Upscale
                                 <Tab.Pane eventKey={"load"}>
                                     <LoadTaskPreviewContainer task={this.props.store.getTask("load")} />
                                 </Tab.Pane>
-                                <Tab.Pane eventKey={"scale2x"}>
-                                    <Scale2xTaskPreviewContainer task={this.props.store.getTask("scale2x")} />
+                                <Tab.Pane eventKey={"scale"}>
+                                    <ScaleTaskPreviewContainer task={this.props.store.getTask("scale")} />
                                 </Tab.Pane>
                                 <Tab.Pane eventKey={"upscale"}>
                                     <UpscaleTaskPreviewContainer task={this.props.store.getTask("upscale")} />

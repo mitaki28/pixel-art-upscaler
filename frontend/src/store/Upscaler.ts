@@ -10,7 +10,12 @@ import { DataUrlImage } from "./Image";
 
 export abstract class Upscaler {
 
+    constructor(private _factor: number) {}
+
     protected abstract predict(img: Jimp.Jimp): Promise<Jimp.Jimp>;
+    get factor(): number {
+        return this._factor;
+    }
     @action.bound
     async convert(src: DataUrlImage): Promise<DataUrlImage> {
         return DataUrlImage.fromJimp(await this.predict(await src.toJimp()));
@@ -23,8 +28,8 @@ export class WebDNNUpscaler extends Upscaler {
     private _inputImage: SymbolicFloat32Array;
     private _outputImage: SymbolicFloat32Array;
 
-    constructor(runner: WebDNN.DescriptorRunner) {
-        super();
+    constructor(runner: WebDNN.DescriptorRunner, factor: number) {
+        super(factor);
         this._runner = runner;
         this._inputImage = runner.inputs[0];
         this._outputImage = runner.outputs[0];
@@ -46,8 +51,8 @@ export class KerasUpscaler extends Upscaler {
 
     private _model: any;
 
-    constructor(model: any) {
-        super();
+    constructor(model: any, factor: number) {
+        super(factor);
         this._model = model;
     }
 
@@ -69,8 +74,8 @@ export class TfjsUpscaler extends Upscaler {
 
     private _model: tf.Model;
 
-    constructor(model: tf.Model) {
-        super();
+    constructor(model: tf.Model, factor: number) {
+        super(factor);
         this._model = model;
     }
 
@@ -116,18 +121,25 @@ export abstract class UpscalerLoader {
     @observable private _state: UpscalerLoadingState;
     private _upscaler: null | Promise<Upscaler>;
     private _path: string;
+    private _factor: number;
 
-    constructor(path: string) {
+    constructor(path: string, factor: number) {
         this._path = path;
         this._upscaler = null;
         this._state = {
             status: UpscalerLoadingState.PENDING,
         };
+        this._factor = factor;
     }
 
     @computed
     get state() {
         return this._state;
+    }
+
+    @computed
+    get factor() {
+        return this._factor;
     }
 
     @action.bound
@@ -177,7 +189,7 @@ export class WebDNNUpscalerLoader extends UpscalerLoader {
     @action.bound
     protected load(path: string): Promise<Upscaler> {
         return WebDNN.load(path).then((runner) => {
-            return new WebDNNUpscaler(runner);
+            return new WebDNNUpscaler(runner, this.factor);
         })
     }
 }
@@ -190,7 +202,7 @@ export class KerasUpscalerLoader extends UpscalerLoader {
             gpu: true,
         });
         return model.ready().then(() => {
-            return new KerasUpscaler(model);
+            return new KerasUpscaler(model, this.factor);
         });
     }
 }
@@ -199,7 +211,7 @@ export class TfjsUpscalerLoader extends UpscalerLoader {
     @action.bound
     protected load(path: string): Promise<Upscaler> {
         return tf.loadModel(path).then((model) => {
-            return new TfjsUpscaler(model);
+            return new TfjsUpscaler(model, this.factor);
         });
     }
 } 
