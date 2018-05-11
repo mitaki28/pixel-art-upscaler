@@ -70,7 +70,7 @@ python -m pixcaler.run --generator=result/gen_iter_{iteration}.npz --mode up /pa
                 * より線がシャープになり、細部の描き込みがきれいになったように見える
                 * 少なくとも nearest neighbor 法と比較して明らかにわかるレベルで変換結果が悪化していない
             * nearest neighbor で拡大された画像を再縮小して1px1ドットにする→再拡大は一切のロスなく可能だが、 bilinear 法で拡大されてしまった画像から1px1ドットの画像を
-        * **TODO: Web 版は Biliner 拡大未対応です**
+        * **TODO: Web 版は Biliner 拡大には対応していますがモデルがまだ準備できていません**
     * 画像を平行移動（64x64のcrop）と鏡像反転して、データを水増しします
         * 平行移動はおそらく重要です
             * nearest neighbor 縮小は性質上、1枚の画像に対して、4種類の結果が存在します（縮小時に4x4格子のどの点を取るかの自由度があるため）
