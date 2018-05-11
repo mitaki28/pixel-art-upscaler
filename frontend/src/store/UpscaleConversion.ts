@@ -44,9 +44,7 @@ export class UpscaleTask extends Task<DataUrlImage> {
     constructor(upscaler: Upscaler, src: DataUrlImage, private _factor: number) {
         super(async () => {
             this.patchSize = 32 * _factor / 2;
-            const preprocessedImage = await this.scale(src)
-                .then(this.padding)
-                .then(this.align);
+            const preprocessedImage = await this.scale(src).then(this.padding);
             this._preprocessedImagePreview = await this.scale(src);
             const img = await preprocessedImage.toJimp();
             const [w, h] = [img.bitmap.width, img.bitmap.height];
@@ -139,11 +137,6 @@ export class UpscaleTask extends Task<DataUrlImage> {
             }
         });
         return await DataUrlImage.fromJimp(ret);
-    }
-
-    @action.bound
-    private async align(src: DataUrlImage): Promise<DataUrlImage> {
-        return src;
     }
 
     @action.bound
