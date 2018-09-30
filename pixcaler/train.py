@@ -24,11 +24,11 @@ def main():
         description='chainer implementation of model',
     )
     parser.add_argument(
-        '--batchsize', '-b', type=int, default=1,
+        '--batchsize', '-b', type=int, default=4,
         help='Number of images in each mini-batch',
     )
     parser.add_argument(
-        '--epoch', '-e', type=int, default=200,
+        '--epoch', '-e', type=int, default=50,
         help='Number of sweeps over the dataset to train',
     )
     parser.add_argument(
@@ -52,15 +52,15 @@ def main():
         help='Resume the training from snapshot',
     )
     parser.add_argument(
-        '--snapshot_interval', type=int, default=1000,
+        '--snapshot_interval', type=int, default=50000,
         help='Interval of snapshot',
     )
     parser.add_argument(
-        '--display_interval', type=int, default=10,
+        '--display_interval', type=int, default=500,
         help='Interval of displaying log to console',
     )
     parser.add_argument(
-        '--preview_interval', type=int, default=100,
+        '--preview_interval', type=int, default=10000,
         help='Interval of previewing generated image',    
     )
     parser.add_argument(

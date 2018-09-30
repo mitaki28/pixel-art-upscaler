@@ -53,7 +53,7 @@ def extract(
                             right = col * n_col_char * w_char + (p_i + 1) * w_char
                             upper = row * n_row_char * h_char + d_i * h_char
                             lower = row * n_row_char * h_char + (d_i + 1) * h_char
-                            name = f"{path.stem}-{row}-{col}-{p}-{d}{path.suffix}"
+                            name = "{}-{}-{}-{}-{}{}".format(path.stem, row, col, p, d, path.suffix)
                             
                             img = _convert(f.crop((left, upper, right, lower)))
                             if img is None:

@@ -23,7 +23,7 @@
 ```
 python3 -m venv venv
 source venv/bin/activate
-pip -r requirements.txt
+pip install -r requirements.txt
 ```
 
 * GPU を利用する場合は手動で cupy を追加インストールしてください
@@ -45,9 +45,10 @@ pip install cupy
         
 
 ### 学習
-1. 以下のコマンドを実行します
+1. 以下のコマンドを実行します(GPU利用推奨)
+    * GPUを利用しない場合、数週間〜数ヶ月学習にかかる可能性があります
 ```
-python -m pixcaler.train --composite -i (データセットのディレクトリ) -b 4
+python -m pixcaler.train -g [GPU ID or -1(CPUを使う場合)]--composite -i (データセットのディレクトリ) -b 4
 ```
 
 
