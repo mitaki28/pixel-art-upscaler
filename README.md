@@ -75,12 +75,8 @@ python -m pixcaler.run --generator=result/gen_iter_{iteration}.npz --mode up /pa
     * nearest neighbor 法(PIL.Image.NEAREST_NEIGHBOR によるリサイズ)で縮小し、再度64x64に nearest_neighbor 法で拡大したものを変換元、もとの画像を変換先として学習します
 
 #### その他
-* Generater/Discriminater の loss 関数を [LSGAN](https://arxiv.org/abs/1611.04076) に変更(効果があるかは微妙)
-    * 同時に lam1 倍率を100→10に変更してます（経験上、lsgan に換装すると loss は10分の1ぐらいにスケールされる）
-    * [CycleGAN](https://github.com/junyanz/CycleGAN) でも採用されているより安定性の高い loss 関数
-* adversarial loss 倍率を1/16に変更
-    * ドット絵の場合、l1-lossが通常の写真などよりもより小さい値に収束するため、adversarial loss をかなり小さく取らないと学習が不安定になります
-    * なお、この倍率だと、loss の値上は、adversarial loss がほとんど無視されているような挙動になりますが、完全に adversarial loss をなくしてしまうと、出力にノイズが乗るようになり、学習結果が不安定になります
+* adversarial loss 倍率を1/8に変更
+    * ドット絵の場合、l1-lossが通常の写真などよりもより小さい値に収束するため、adversarial loss を小さく取らないと学習が不安定になります
 * pix2pix ネットワークの encoder, decoder の最上段を kernel size 5x5, stride 1, padding 2 の Convolution2D に換装（効果あるのか微妙）
     * もとのネットワークでは画像サイズが128x128以上ないと、画像幅が足りずエラーになります
     * そこで、最上段を5x5のConvolution2D(縮小なし)に換装しました
