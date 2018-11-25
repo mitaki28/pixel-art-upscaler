@@ -41,7 +41,7 @@ export class App {
     }
     @computed
     get canSelectUpscaler() {
-        return this.currentUpscalerLoader.state.status === UpscalerLoadingState.PENDING;
+        return this.canStartUpscale;
     }
     @action.bound
     selectStableMode() {
