@@ -114,8 +114,6 @@ export class UpscaleTask extends Task<DataUrlImage> {
             Math.floor((nw - w) / 2),
         ];
         const ret: Jimp.Jimp = new (Jimp.default as any)(nw, nh);
-        ret.filterType(Jimp.PNG_FILTER_NONE);
-        ret.deflateLevel(0);
         ret.scan(0, 0, ret.bitmap.width, ret.bitmap.height, (x, y, idx) => {
             let ox: number;
             if (x < pw) {

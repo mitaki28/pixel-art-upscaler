@@ -37,8 +37,6 @@ export function imageToChwFloat32Array(img: Jimp.Jimp, channel: number): Float32
 
 export function chwFloat32ArrayToImage(array: Float32Array, channel: number, h: number, w: number): Jimp.Jimp {
     const ret: Jimp.Jimp = new (Jimp.default as any)(w, h);
-    ret.filterType(Jimp.PNG_FILTER_NONE);
-    ret.deflateLevel(0);
     ret.scan(0, 0, w, h, (x, y, idx) => {
         for (let c = 0; c < channel; c++) {
             ret.bitmap.data[idx + c] = Math.round(array[c * (h * w) + y * w + x]);
@@ -62,8 +60,6 @@ export function imageToHwcFloat32Array(img: Jimp.Jimp, channel: number): Float32
 
 export function hwcFloat32ArrayToImage(array: Float32Array, channel: number, h: number, w: number): Jimp.Jimp {
     const ret: Jimp.Jimp = new (Jimp.default as any)(w, h);
-    ret.filterType(Jimp.PNG_FILTER_NONE);
-    ret.deflateLevel(0);
     ret.scan(0, 0, w, h, (x, y, idx) => {
         for (let c = 0; c < channel; c++) {
             ret.bitmap.data[idx + c] = Math.floor(array[y * (w * channel) + x * channel + c]);
