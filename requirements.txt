@@ -36,7 +36,7 @@ scipy==1.0.1
 six==1.11.0
 SQLAlchemy==1.2.5
 tensorboard==1.7.0
-tensorflow==1.7.0
+tensorflow==1.15.0
 tensorflowjs==0.1.1
 termcolor==1.1.0
 tzlocal==1.5.1
